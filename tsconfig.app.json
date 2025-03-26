@@ -1,0 +1,56 @@
+{
+  "include": ["env.d.ts", "src/**/*", "src/**/*.vue", "types", "mock/**/*"],
+  "exclude": ["src/**/__tests__/*", "node_modules", "dist", "**/*.js"],
+  "compilerOptions": {
+    "strict": true,
+    /* 目标编译版本为最新的ECMAScript规范 */
+    "target": "ESNext",
+    /* 设置模块的编译方式，为ES6 */
+    "module": "ESNext",
+    /* 设置模块的解析方式为node */
+    "moduleResolution": "node",
+    /* 强制文件名称大小写值一致 */
+    "forceConsistentCasingInFileNames": true,
+    /* 编译是否包含默认库文件 */
+    "noLib": false,
+    /* 允许从没有默认导出的文件中导入模块 */
+    "allowSyntheticDefaultImports": true,
+    /* 是否启用严格的函数类型检查 */
+    "strictFunctionTypes": false,
+    /* 设置jsx的语法处理方式为保留原样 */
+    "jsx": "preserve",
+    /* 允许使用js */
+    "allowJs": true,
+    /* 是否生成映射文件 */
+    "sourceMap": true,
+    /* 启用ES模块与非ES模块的转换 */
+    "esModuleInterop": true,
+    /* 允许导入json模块 */
+    "resolveJsonModule": true,
+    /* 禁止未使用的局部变量 */
+    "noUnusedLocals": true,
+    /* 禁止未使用的函数参数 */
+    "noUnusedParameters": true,
+    /* 是否启用实验性的装饰语法 */
+    "experimentalDecorators": true,
+    /* 项目依赖的库 */
+    "lib": ["dom", "esnext"],
+    /* 是否允许隐式的any类型 */
+    "noImplicitAny": false,
+    /* 是否跳过对类型声明文件的类型检查 */
+    "skipLibCheck": true,
+    /* 是否移除代码中的注释 */
+    "removeComments": true,
+    /* 包含的额外类型声明文件 */
+    "types": ["vite/client", "node"],
+    /* 是否启用typescript的composite编译模式，增量编译，加快编译速度 */
+    "composite": true,
+    /* 指定ts构建生成的依赖文件存储路径 */
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    /* 项目的根目录，相对path路径 */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
