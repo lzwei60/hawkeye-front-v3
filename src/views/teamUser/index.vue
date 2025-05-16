@@ -22,7 +22,10 @@
 	</div>
 
 	<div class="mt-[18px]">
-		<div class="flex items-center justify-between">
+		<div
+			class="flex items-center justify-between border-t py-[10px] mb-[10px] first:pt-0 last:mb-0"
+			v-for="item in initMemberList"
+			:key="item.userId">
 			<div class="flex items-center">
 				<el-avatar
 					src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png"
@@ -86,7 +89,7 @@
 import { Plus } from '@element-plus/icons-vue'
 import { useTeam } from '@/hooks'
 
-const { initRoleList } = useTeam()
+const { initRoleList, initMemberList } = useTeam()
 </script>
 
 <style lang="scss" scoped>
