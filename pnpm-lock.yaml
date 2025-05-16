@@ -11,6 +11,9 @@ importers:
       '@element-plus/icons-vue':
         specifier: ^2.3.1
         version: 2.3.1(vue@3.5.4(typescript@5.6.2))
+      '@element-plus/locale':
+        specifier: ^0.0.5
+        version: 0.0.5(vue@3.5.4(typescript@5.6.2))
       '@types/js-cookie':
         specifier: ^3.0.6
         version: 3.0.6
@@ -23,6 +26,9 @@ importers:
       axios:
         specifier: ^1.7.7
         version: 1.7.7
+      dayjs:
+        specifier: ^1.11.13
+        version: 1.11.13
       element-plus:
         specifier: ^2.8.2
         version: 2.8.2(vue@3.5.4(typescript@5.6.2))
@@ -47,12 +53,9 @@ importers:
       sass:
         specifier: ^1.78.0
         version: 1.78.0
-      unplugin-icons:
-        specifier: ^0.19.3
-        version: 0.19.3(@vue/compiler-sfc@3.5.4)
-      unplugin-vue-components:
-        specifier: ^0.27.4
-        version: 0.27.4(@babel/parser@7.25.6)(@nuxt/kit@3.13.2(rollup@4.21.2))(rollup@4.21.2)(vue@3.5.4(typescript@5.6.2))
+      solarlunar:
+        specifier: ^2.0.7
+        version: 2.0.7
       vite-plugin-compression:
         specifier: ^0.5.1
         version: 0.5.1(vite@5.4.4(@types/node@22.5.4)(sass@1.78.0))
@@ -69,6 +72,9 @@ importers:
       '@eslint/js':
         specifier: ^9.10.0
         version: 9.10.0
+      '@iconify-json/carbon':
+        specifier: ^1.2.8
+        version: 1.2.8
       '@iconify-json/ep':
         specifier: ^1.2.0
         version: 1.2.0
@@ -123,6 +129,12 @@ importers:
       unplugin-auto-import:
         specifier: ^0.18.3
         version: 0.18.3(@nuxt/kit@3.13.2(rollup@4.21.2))(@vueuse/core@11.0.3(vue@3.5.4(typescript@5.6.2)))(rollup@4.21.2)
+      unplugin-icons:
+        specifier: ^0.19.3
+        version: 0.19.3(@vue/compiler-sfc@3.5.4)
+      unplugin-vue-components:
+        specifier: ^0.27.4
+        version: 0.27.4(@babel/parser@7.25.6)(@nuxt/kit@3.13.2(rollup@4.21.2))(rollup@4.21.2)(vue@3.5.4(typescript@5.6.2))
       vite:
         specifier: ^5.4.1
         version: 5.4.4(@types/node@22.5.4)(sass@1.78.0)
@@ -282,6 +294,11 @@ packages:
     resolution: {integrity: sha512-XxVUZv48RZAd87ucGS48jPf6pKu0yV5UCg9f4FFwtrYxXOwWuVJo6wOvSLKEoMQKjv8GsX/mhP6UsC1lRwbUWg==}
     peerDependencies:
       vue: ^3.2.0
+
+  '@element-plus/locale@0.0.5':
+    resolution: {integrity: sha512-Eqmbz3mB2eY+Ro7vVxYz+J33P66QmCDykX0SsyJVCMwEwDHgPDQtJZplLHgSSK+ihwQKg70wfIhldojEef85uw==}
+    peerDependencies:
+      vue: 3.1.1
 
   '@esbuild/aix-ppc64@0.21.5':
     resolution: {integrity: sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ==}
@@ -467,6 +484,9 @@ packages:
   '@humanwhocodes/retry@0.3.0':
     resolution: {integrity: sha512-d2CGZR2o7fS6sWB7DG/3a95bGKQyHMACZ5aW8qGkkqQpUoZV6C0X7Pc7l4ZNMZkfNBf4VWNe9E1jRsf0G146Ew==}
     engines: {node: '>=18.18'}
+
+  '@iconify-json/carbon@1.2.8':
+    resolution: {integrity: sha512-6xh4YiFBz6qoSnB3XMe23WvjTJroDFXB17J1MbiT7nATFe+70+em1acRXr8hgP/gYpwFMHFc4IvjA/IPTPnTzg==}
 
   '@iconify-json/ep@1.2.0':
     resolution: {integrity: sha512-0PQ0YxrYj373w7zPg/b50sbJUvlOGqb8a9l4DJA32hBM+SmEAPpRZrlz0c8rlA5RbjJF4nYZsrpB9ZzIX55o2A==}
@@ -2530,6 +2550,9 @@ packages:
     resolution: {integrity: sha512-FtyOnWN/wCHTVXOMwvSv26d+ko5vWlIDD6zoUJ7LW8vh+ZBC8QdljveRP+crNrtBwioEUWy/4dMtbBjA4ioNlg==}
     engines: {node: '>=0.10.0'}
 
+  solarlunar@2.0.7:
+    resolution: {integrity: sha512-2SfuCCgAAxFU5MTMYuKGbRgRLcPTJQf3azMEw/GmBpHXA7N2eAQJStSqktZJjnq4qRCboBPnqEB866+PCregag==}
+
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
@@ -3213,6 +3236,11 @@ snapshots:
     dependencies:
       vue: 3.5.4(typescript@5.6.2)
 
+  '@element-plus/locale@0.0.5(vue@3.5.4(typescript@5.6.2))':
+    dependencies:
+      dayjs: 1.11.13
+      vue: 3.5.4(typescript@5.6.2)
+
   '@esbuild/aix-ppc64@0.21.5':
     optional: true
 
@@ -3333,6 +3361,10 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/retry@0.3.0': {}
+
+  '@iconify-json/carbon@1.2.8':
+    dependencies:
+      '@iconify/types': 2.0.0
 
   '@iconify-json/ep@1.2.0':
     dependencies:
@@ -5588,6 +5620,8 @@ snapshots:
       use: 3.1.1
     transitivePeerDependencies:
       - supports-color
+
+  solarlunar@2.0.7: {}
 
   source-map-js@1.2.1: {}
 

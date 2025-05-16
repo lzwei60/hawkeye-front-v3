@@ -1,14 +1,19 @@
 import { request } from '@/utils/request'
 
-export const loginApi = (params: any) => {
-  // 设置 showLoading，timeout 会覆盖index.ts里的默认值
-  return request.post<any>('/login', params, { showLoading: false, timeout: 1000 })
+/**
+ * 登录接口
+ * @param params
+ * @returns
+ */
+export const loginApi = async (params: any) => {
+	return request.post('/login', params)
 }
 
-export const sendSuccessApi = () => {
-  return request.get<any>('/upms/user/info')
-}
-
-export const sendErrorApi = () => {
-  return request.post<any>('/auth/auth/token', { timeout: 1000 })
+/**
+ * 注册
+ * @param params
+ * @returns
+ */
+export const registerApi = async (params: any) => {
+	return request.post('/login', params)
 }

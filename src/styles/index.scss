@@ -13,10 +13,11 @@
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  padding: 0;
+  // display: flex;
+  // place-items: center;
+  // min-width: 320px;
+  // min-height: 100vh;
 }
 
 #app {
@@ -43,4 +44,30 @@ body {
 }
 .dark::view-transition-new(root) {
   z-index: 1;
+}
+
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 5px; /* 设置垂直滚动条的宽度 */
+  height: 10px; /* 设置水平滚动条的高度 */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #59acff; /* 设置滚动条的颜色 */
+  border-radius: 10px; /* 设置滚动条的圆角 */
+  // border: 3px solid #ffffff00; /* 可选，滚动条的边框 */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #8bc5ff; /* 鼠标悬停时，滚动条颜色改变 */
+}
+
+::-webkit-scrollbar-track {
+  background-color: #ffffff; /* 滚动条轨道的背景色 */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-track-piece {
+  background-color: #ffffff;
 }
