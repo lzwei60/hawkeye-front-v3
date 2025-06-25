@@ -303,7 +303,7 @@
 import { isEmpty, cloneDeep } from 'lodash-es'
 import { useTask } from '@/hooks'
 
-const { initTableData, isExpired } = useTask()
+const { priorityOptions, initTableData, isExpired } = useTask()
 
 const DEFAULT_FORMMODEL = {
 	taskName: '',
@@ -319,12 +319,7 @@ const taskStatusOptions = ref([
 	{ value: 1, label: '已完成' },
 	{ value: 2, label: '已延期' },
 ])
-const priorityOptions = ref([
-	{ value: 0, label: '最高', color: '#df3c2f' },
-	{ value: 1, label: '较高', color: '#f5941d' },
-	{ value: 2, label: '普通', color: '#999999' },
-	{ value: 3, label: '较低', color: '#51b52f' },
-])
+
 const projectMember = ref([
 	{ userId: '-1', userName: '无负责人', headImg: '' },
 	{ userId: 'liaozhiwei', userName: '廖志伟', headImg: '' },

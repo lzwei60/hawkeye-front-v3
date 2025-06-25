@@ -5,7 +5,7 @@ import { request } from '@/utils/request'
  * @param params
  * @returns
  */
-export const loginApi = async (params: any) => {
+export const loginApi = async (params) => {
 	return request.post('/login', params)
 }
 
@@ -14,6 +14,6 @@ export const loginApi = async (params: any) => {
  * @param params
  * @returns
  */
-export const registerApi = async (params: any) => {
+export const registerApi = async (params) => {
 	return request.post('/login', params)
 }

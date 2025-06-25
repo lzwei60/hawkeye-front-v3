@@ -11,6 +11,13 @@ import folder from '@/assets/images/folder.png'
 export const useTask = () => {
 	const router = useRouter()
 
+	const priorityOptions = ref([
+		{ value: 0, label: '最高', color: '#df3c2f' },
+		{ value: 1, label: '较高', color: '#f5941d' },
+		{ value: 2, label: '普通', color: '#999999' },
+		{ value: 3, label: '较低', color: '#51b52f' },
+	])
+
 	// 放假日期
 	const libertyDayOptions = [
 		// 元旦（1天）
@@ -213,6 +220,7 @@ export const useTask = () => {
 	}
 
 	return {
+		priorityOptions,
 		libertyDayOptions,
 		workingDayOptions,
 		initTableData,

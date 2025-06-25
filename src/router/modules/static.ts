@@ -24,6 +24,7 @@ const routes = [
 					title: '注册',
 				},
 			},
+
 			{
 				path: 'team',
 				component: () => import('@/views/teamManager/index.vue'),
@@ -61,8 +62,8 @@ const routes = [
 						},
 					},
 					{
-						path: 'teamUynamic',
-						component: () => import('@/views/projectManager/index.vue'),
+						path: 'teamDynamic',
+						component: () => import('@/views/dynamic/index.vue'),
 						meta: {
 							title: '动态',
 							menu: true,
@@ -70,7 +71,7 @@ const routes = [
 					},
 					{
 						path: 'teamStatistics',
-						component: () => import('@/views/projectManager/index.vue'),
+						component: () => import('@/views/statistics/index.vue'),
 						meta: {
 							title: '统计',
 							menu: true,
@@ -78,10 +79,18 @@ const routes = [
 					},
 					{
 						path: 'mySelf',
-						component: () => import('@/views/projectManager/index.vue'),
+						component: () => import('@/views/mySelf/index.vue'),
 						meta: {
 							title: '我自己',
 							menu: true,
+						},
+					},
+					{
+						path: 'userInfo',
+						component: () => import('@/views/userInfo/index.vue'),
+						meta: {
+							title: '个人中心',
+							menu: false,
 						},
 					},
 				],

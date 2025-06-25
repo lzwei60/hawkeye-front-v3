@@ -25,7 +25,7 @@ export const useTeam = () => {
 			userId: 'liaozhiwei2',
 			userName: '廖志伟2',
 			headImg: folder,
-			roles: ['3'],
+			roles: ['3', '4'],
 		},
 		{
 			userId: 'liaozhiwei3',
@@ -60,27 +60,49 @@ export const useTeam = () => {
 		},
 	])
 
+	const initNewMemberList = ref([
+		{
+			userId: 'liaozhiwei',
+			userName: '廖志伟',
+			headImg:
+				'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
+			roles: [],
+		},
+		{
+			userId: 'liaozhiwei1',
+			userName: '廖志伟1',
+			headImg:
+				'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png',
+			roles: [],
+		},
+	])
+
 	const initRoleList = ref([
 		{
 			roleId: '1',
 			roleName: '超级管理员',
+			color: '#1677ff',
 		},
 		{
 			roleId: '2',
 			roleName: '团队管理员',
+			color: '#f5941d',
 		},
 		{
 			roleId: '3',
 			roleName: '项目管理员',
+			color: '#51b52f',
 		},
 		{
 			roleId: '4',
 			roleName: '成员',
+			color: '#999999',
 		},
 	])
 
 	return {
 		initMemberList,
+		initNewMemberList,
 		initRoleList,
 	}
 }
