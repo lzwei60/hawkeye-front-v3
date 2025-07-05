@@ -1,0 +1,4 @@
+export enum StoreEnum {
+	HAWK_AUTH_STORE = 'HAWK_AUTH_STORE',
+	HAWK_TEAM_STORE = 'HAWK_TEAM_STORE',
+}

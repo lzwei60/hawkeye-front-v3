@@ -121,7 +121,7 @@ const navigateToExperience = () => {
 .header {
 	height: 1100px;
 	width: 100%;
-	background: url(../../assets/images/indexbg.png) no-repeat;
+	background: url(../../assets/images/index/indexbg.png) no-repeat;
 	background-size: 100% 80%;
 	min-width: 1200px;
 }
@@ -157,7 +157,7 @@ const navigateToExperience = () => {
 	width: 37px;
 	height: 38px;
 	margin-right: 25px;
-	background: url(../../assets/images/logo.png) no-repeat;
+	background: url(../../assets/images/index/logo.png) no-repeat;
 }
 
 .nav-logo-text {
@@ -204,7 +204,7 @@ const navigateToExperience = () => {
 	border: 1px;
 	width: 1200px;
 	height: 680px;
-	background: url(../../assets/images/index_drop.png) no-repeat;
+	background: url(../../assets/images/index/index_drop.png) no-repeat;
 	margin: 0 auto;
 	background-size: 100%;
 	margin-top: 60px;
@@ -256,7 +256,7 @@ const navigateToExperience = () => {
 .content-left-img {
 	width: 500px;
 	height: 350px;
-	background: url(../../assets/images/pc.png) no-repeat;
+	background: url(../../assets/images/index/pc.png) no-repeat;
 	background-size: 100%;
 	margin: 0 auto;
 }
@@ -287,7 +287,7 @@ const navigateToExperience = () => {
 .content-right-oneimg {
 	width: 285px;
 	height: 165px;
-	background: url(../../assets/images/createproject.png) no-repeat;
+	background: url(../../assets/images/index/createproject.png) no-repeat;
 	background-size: 100%;
 	left: 75px;
 	top: 90px;
@@ -296,7 +296,7 @@ const navigateToExperience = () => {
 .content-right-twoimg {
 	width: 290px;
 	height: 140px;
-	background: url(../../assets/images/Invitation.png) no-repeat;
+	background: url(../../assets/images/index/Invitation.png) no-repeat;
 	background-size: 100%;
 	left: 75px;
 	top: 280px;
@@ -305,7 +305,7 @@ const navigateToExperience = () => {
 .content-right-thrimg {
 	width: 295px;
 	height: 140px;
-	background: url(../../assets/images/filechild.png) no-repeat;
+	background: url(../../assets/images/index/filechild.png) no-repeat;
 	background-size: 100%;
 	left: 380px;
 	top: 90px;
@@ -314,7 +314,7 @@ const navigateToExperience = () => {
 .content-right-fouimg {
 	width: 295px;
 	height: 140px;
-	background: url(../../assets/images/statistics.png) no-repeat;
+	background: url(../../assets/images/index/statistics.png) no-repeat;
 	background-size: 100%;
 	left: 380px;
 	top: 280px;
@@ -373,7 +373,7 @@ const navigateToExperience = () => {
 .content-third-img {
 	width: 585px;
 	height: 685px;
-	background: url(../../assets/images/loginall.png) no-repeat;
+	background: url(../../assets/images/index/loginall.png) no-repeat;
 	background-size: 100%;
 	margin: 0 auto;
 }

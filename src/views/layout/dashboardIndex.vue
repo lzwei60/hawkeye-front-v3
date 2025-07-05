@@ -2,7 +2,15 @@
 	<div class="dashboard-index bg-[#f0f7ff] w-[100vw] h-[100vh]">
 		<div class="menu-box flex justify-between items-center h-[60px] bg-white">
 			<div class="top-title border-r h-[60px] leading-[60px] pl-4 pr-4">
-				{{ teamName }}
+				<PopoverSelect
+					v-model="teamId"
+					:search="false"
+					:options="teamList"
+					@change="changeTeam">
+					<template #reference>
+						<div class="w-[220px] truncate cursor-pointer">{{ teamLabel }}</div>
+					</template>
+				</PopoverSelect>
 			</div>
 
 			<div class="top-menu flex-1">
@@ -116,10 +124,10 @@
 						<div
 							class="base-user flex items-center justify-center pl-[20px] pr-[20px] text-[#ffffff] bg-[#1677ff] h-[60px]">
 							<div class="user-avatar mt-[5px] mr-[10px]">
-								<el-avatar :size="32" />
+								<el-avatar :size="32" :src="$userInfo.userHead" />
 							</div>
 
-							<div class="user-name font-medium">用户名</div>
+							<div class="user-name font-medium">{{ $userInfo.userName }}</div>
 						</div>
 					</template>
 
@@ -140,24 +148,35 @@
 		</div>
 
 		<div
-			class="content-box m-[20px] ml-[100px] mr-[100px] h-[calc(100vh-64px-40px)] bg-white shadow-[0_0px_25px_-5px_rgba(0,0,0,0.2),_0_8px_10px_-6px_rgba(0,0,0,0.1)] rounded p-[18px] overflow-hidden">
-			<router-view></router-view>
+			class="content-box m-[20px] ml-[150px] mr-[150px] h-[calc(100vh-64px-40px)] bg-white shadow-[0_0px_25px_-5px_rgba(0,0,0,0.2),_0_8px_10px_-6px_rgba(0,0,0,0.1)] rounded p-[18px] overflow-hidden">
+			<router-view v-if="viewKey"></router-view>
 		</div>
 	</div>
 </template>
 
 <script setup>
 import { useRouter, useRoute } from 'vue-router'
+import { useAuth } from '@/hooks'
+import { useAuthStoreWithOut } from '@/store/modules/auth'
+import PopoverSelect from '@/components/popoverSelect/index.vue'
 
 const route = useRoute()
 
 const router = useRouter()
 
-const teamName = ref('我是一个团队名称')
+const { $changeTeamId, $userInfo, $teamList, $teamId } = useAuth()
 
 const activeIndex = ref('1')
 
 const menuList = ref([])
+
+const teamId = ref(null)
+
+const teamList = ref([])
+
+const teamLabel = computed(() => {
+	return teamList.value.find((item) => item.value === teamId.value)?.label
+})
 
 /**
  * 获取路由
@@ -171,6 +190,9 @@ const getMenuList = () => {
 	menuList.value = nestRoutes(routes)
 }
 
+/**
+ * 嵌套路由处理
+ */
 const nestRoutes = (routes) => {
 	const routeMap = new Map()
 	const result = []
@@ -213,6 +235,19 @@ const handleSelect = (item) => {
 	router.push(item)
 }
 
+const viewKey = ref(true)
+
+/**
+ * 切换团队
+ */
+const changeTeam = (id) => {
+	$changeTeamId(id)
+	viewKey.value = false
+	setTimeout(() => {
+		viewKey.value = true
+	}, 0)
+}
+
 const noticeList = ref([])
 
 const loading = ref(false)
@@ -250,12 +285,16 @@ const pageToUserInfo = () => {
  * 退出登录
  */
 const logout = () => {
-	// TODO: 退出登录
+	router.push('/login')
+	const authStore = useAuthStoreWithOut()
+	authStore.authLoginOut(true)
 }
 
 // 初始化
 const init = () => {
 	getMenuList()
+	teamList.value = unref($teamList)
+	teamId.value = unref($teamId)
 }
 
 onMounted(() => {

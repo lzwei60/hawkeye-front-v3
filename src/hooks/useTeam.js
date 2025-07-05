@@ -79,22 +79,22 @@ export const useTeam = () => {
 
 	const initRoleList = ref([
 		{
-			roleId: '1',
+			roleId: 1,
 			roleName: '超级管理员',
 			color: '#1677ff',
 		},
 		{
-			roleId: '2',
+			roleId: 2,
 			roleName: '团队管理员',
 			color: '#f5941d',
 		},
 		{
-			roleId: '3',
+			roleId: 3,
 			roleName: '项目管理员',
 			color: '#51b52f',
 		},
 		{
-			roleId: '4',
+			roleId: 4,
 			roleName: '成员',
 			color: '#999999',
 		},

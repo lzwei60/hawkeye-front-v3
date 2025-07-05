@@ -6,7 +6,7 @@
 		<transition :name="transitionName" mode="out-in">
 			<div :key="loginType" class="login_body-box">
 				<div
-					v-if="visibleAccount || visibleRegister"
+					v-if="visibleAccount || visibleRegister || visibleForget"
 					class="relative mb-5"
 					title="账号">
 					<div class="login_body_username">
@@ -16,7 +16,8 @@
 							v-model="formModel.userAccount"
 							size="large"
 							type="text"
-							placeholder="请输入账号" />
+							placeholder="请输入账号"
+							@blur="validateAccount" />
 					</div>
 
 					<div
@@ -45,7 +46,7 @@
 				</div>
 
 				<div
-					v-if="!visibleAccount || visibleRegister"
+					v-if="!visibleAccount || visibleRegister || visibleForget"
 					class="relative mb-5"
 					title="邮箱">
 					<div class="login_body_username">
@@ -84,7 +85,10 @@
 					</div>
 				</div>
 
-				<div v-if="visibleRegister" class="relative mb-5" title="验证码">
+				<div
+					v-if="visibleRegister || visibleForget"
+					class="relative mb-5"
+					title="验证码">
 					<div class="login_body_username">
 						<Icon-carbon-status-resolved
 							class="text-[#b1dcfe] text-2xl mr-2.5 min-w-[26px] w-[26px]" />
@@ -93,8 +97,6 @@
 							class="mr-2"
 							v-model="formModel.code"
 							size="large"
-							type="password"
-							show-password
 							placeholder="请输入验证码" />
 
 						<el-button
@@ -117,7 +119,7 @@
 		</transition>
 
 		<div
-			v-if="!visibleRegister"
+			v-if="!visibleRegister && !visibleForget"
 			class="login_body_forget text-4 mb-[30px]"
 			@click="forgetPassword">
 			忘记密码？
@@ -150,10 +152,18 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import _, { cloneDeep } from 'lodash-es'
-import { loginApi, registerApi } from '@/api/modules/login'
+import {
+	loginApi,
+	registerApi,
+	sendEmailCodeApi,
+	resetPasswordApi,
+} from '@/api/modules/login'
+import { useAuthStore } from '@/store/modules/auth'
 import { ConstanEnum } from '@/enums'
 
 const router = useRouter()
+
+const authStore = useAuthStore()
 
 const props = defineProps({
 	// 状态
@@ -170,8 +180,14 @@ const props = defineProps({
 // 是否账号登录
 const visibleAccount = computed(() => props.loginType === 1)
 
+// 是否是登录
+const visibleLogin = computed(() => props.statusType === 'login')
+
 // 是否是注册
 const visibleRegister = computed(() => props.statusType === 'register')
+
+// 是否是忘记密码
+const visibleForget = computed(() => props.statusType === 'forget')
 
 // 动画效果
 const transitionName = computed(() =>
@@ -180,11 +196,24 @@ const transitionName = computed(() =>
 
 // 基础文字数据
 const textModel = computed(() => {
-	return {
-		buttonText: unref(visibleRegister) ? '立即注册' : '立即登录',
-		tipsText: unref(visibleRegister) ? '已有账号？' : '还没有注册？',
-		tipsButton: unref(visibleRegister) ? '立即登录' : '立即注册',
-	}
+	if (unref(visibleLogin))
+		return {
+			buttonText: '立即登录',
+			tipsText: '还没有注册？',
+			tipsButton: '立即注册',
+		}
+	else if (unref(visibleRegister))
+		return {
+			buttonText: '立即注册',
+			tipsText: '已有账号？',
+			tipsButton: '立即登录',
+		}
+	else if (unref(visibleForget))
+		return {
+			buttonText: '重置密码',
+			tipsText: '已有账号？',
+			tipsButton: '立即登录',
+		}
 })
 
 /**
@@ -316,7 +345,7 @@ const resetFormModel = () => {
  * 忘记密码
  */
 const forgetPassword = () => {
-	console.log('忘记密码')
+	router.push('/forget')
 }
 
 // 倒计时秒数
@@ -331,9 +360,10 @@ const timer = ref(null)
 const sendCode = async () => {
 	try {
 		loading.value = true
-		validateEmail()
+		await validateEmail()
 
-		// TODO: 发送请求接口
+		await sendEmailCodeApi({ email: unref(formModel).userEmail })
+		ElMessage.success('验证码发送成功')
 		const now = _.now() // 更可靠的当前时间戳
 		localStorage.setItem(ConstanEnum.STORAGE_KEY, now.toString())
 		startCountdown(ConstanEnum.DURATION)
@@ -362,7 +392,8 @@ const startCountdown = (remaining) => {
  * 跳转到 登录 | 注册页面
  */
 const pageToOtherPage = () => {
-	const path = unref(visibleRegister) ? '/login' : '/register'
+	const path =
+		unref(visibleRegister) || unref(visibleForget) ? '/login' : '/register'
 	router.push(path)
 }
 
@@ -372,8 +403,10 @@ const pageToOtherPage = () => {
 const loginOrRegister = async () => {
 	if (unref(visibleRegister)) {
 		await register()
-	} else {
+	} else if (unref(visibleLogin)) {
 		await login()
+	} else {
+		await forget()
 	}
 }
 
@@ -382,11 +415,12 @@ const loginOrRegister = async () => {
  */
 const login = async () => {
 	try {
-		validate()
 		loading.value = true
-
+		props.loginType === 1 ? validateAccount() : validateEmail()
+		validatePassword()
 		const params = cloneDeep(unref(formModel))
 		params.loginType = props.loginType
+
 		unref(visibleAccount) ? delete params.userEmail : delete params.userAccount
 		if (!unref(visibleRegister)) {
 			delete params.userName
@@ -394,6 +428,14 @@ const login = async () => {
 		}
 
 		const res = await loginApi(params)
+
+		localStorage.setItem('token', res.data.token)
+
+		ElMessage.success('登录成功')
+
+		await authStore.authInitial(res.data)
+
+		router.push('./team')
 	} catch (err) {
 		return Promise.reject(err)
 	} finally {
@@ -406,12 +448,41 @@ const login = async () => {
  */
 const register = async () => {
 	try {
-		validate()
+		await validate()
 		loading.value = true
 
 		const params = cloneDeep(unref(formModel))
+		params.code = Number(params.code)
 
 		const res = await registerApi(params)
+
+		ElMessage.success('注册成功')
+		pageToOtherPage()
+	} catch (err) {
+		return Promise.reject(err)
+	} finally {
+		loading.value = false
+	}
+}
+
+/**
+ * 重置密码
+ */
+const forget = async () => {
+	try {
+		await validateAccount()
+		await validateEmail()
+		await validatePassword()
+		await validateCode()
+		loading.value = true
+
+		const params = cloneDeep(unref(formModel))
+		params.code = Number(params.code)
+
+		const res = await resetPasswordApi(params)
+
+		ElMessage.success('重置成功')
+		pageToOtherPage()
 	} catch (err) {
 		return Promise.reject(err)
 	} finally {

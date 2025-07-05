@@ -11,14 +11,17 @@
 		</div>
 
 		<div class="mt-[20px] flex items-center">
-			<el-avatar src="" :size="70" />
+			<el-avatar :src="userInfo.userHead" :size="70" />
 
 			<el-upload
 				class="ml-[20px]"
-				action="https://run.mocky.io/v3/9d059bf9-4660-45f2-925d-ce80ad6c4d15"
-				:show-file-list="false"
+				action="/api/uploadAvatar"
+				name="avatar"
+				:headers="uploadHeaders"
 				:on-success="handleAvatarSuccess"
-				:before-upload="beforeAvatarUpload">
+				:before-upload="beforeAvatarUpload"
+				accept=".jpg,.png,.jpeg"
+				:show-file-list="false">
 				<el-button type="primary" link>选择新头像</el-button>
 				<template #tip>
 					<div class="el-upload__tip">你可以选择 png/jpg 图片作为头像</div>
@@ -30,7 +33,7 @@
 			<div class="text-[14px] w-[70px] text-right">姓名</div>
 
 			<el-input
-				v-model="userInfo.name"
+				v-model="userInfo.userName"
 				class="ml-[20px]"
 				style="width: 240px"
 				placeholder="请输入姓名" />
@@ -41,6 +44,7 @@
 
 			<div class="flex items-start flex-col flex-start">
 				<el-input
+					v-model="userInfo.userEmail"
 					class="ml-[20px]"
 					style="width: 240px"
 					disabled
@@ -80,6 +84,7 @@
 			<div class="text-[14px] w-[70px] text-right">描述</div>
 
 			<el-input
+				v-model="userInfo.userDesc"
 				class="ml-[20px]"
 				type="textarea"
 				:rows="4"
@@ -100,6 +105,8 @@
 
 	<EmailDialog
 		:visible="emailDialogData.visible"
+		:email="emailDialogData.email"
+		@confirm="confirmUpdateInfo"
 		@cancle="changeEmailDialog(false)" />
 
 	<passwordDialog
@@ -108,10 +115,17 @@
 </template>
 
 <script lang="ts" setup>
+import { cloneDeep } from 'lodash-es'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import type { UploadProps } from 'element-plus'
 import EmailDialog from './components/EmailDialog.vue'
 import passwordDialog from './components/passwordDialog.vue'
+import { useAuth } from '@/hooks'
+import { useAuthStore } from '@/store/modules/auth'
+import { updateBaseInfoApi, getLoginUserInfoApi } from '@/api/modules/user.js'
+
+const { $userInfo } = useAuth()
+
+const authStore = useAuthStore()
 
 // 用户数据
 const userInfo = ref({})
@@ -139,21 +153,25 @@ const quitTeam = async () => {
 	}
 }
 
+const uploadHeaders = () => {
+	return {
+		Authorization: `Bearer ${$userInfo.value.token}`,
+	}
+}
+
 /**
  * 上传头像成功
  */
-const handleAvatarSuccess: UploadProps['onSuccess'] = (
-	response,
-	uploadFile
-) => {
-	userInfo.value.headImg = URL.createObjectURL(uploadFile.raw!)
+const handleAvatarSuccess = () => {
+	confirmUpdateInfo()
+	ElMessage.success('上传成功')
 }
 
 /**
  * 上传头像前校验
  */
-const beforeAvatarUpload: UploadProps['beforeUpload'] = (file) => {
-	const fileType = ['.png', '.jpg', '.jpeg', '.gif', '.bmp']
+const beforeAvatarUpload = (file) => {
+	const fileType = ['.png', '.jpg', '.jpeg']
 	const fileSuffix = file.name.split('.').pop().toLocaleLowerCase()
 	const isType = fileType.includes(`.${fileSuffix}`)
 	const isLimit = file.size / 1024 / 1024 < 5
@@ -171,6 +189,7 @@ const beforeAvatarUpload: UploadProps['beforeUpload'] = (file) => {
 // 修改邮箱弹窗配置数据
 const emailDialogData = ref({
 	visible: false,
+	email: '',
 })
 
 /**
@@ -178,6 +197,7 @@ const emailDialogData = ref({
  */
 const changeEmailDialog = (bool) => {
 	emailDialogData.value.visible = bool
+	emailDialogData.value.email = bool ? userInfo.value.userEmail : ''
 }
 
 // 修改密码弹窗配置数据
@@ -192,6 +212,19 @@ const changePasswordDialog = (bool) => {
 	passwordDialogData.value.visible = bool
 }
 
+/**
+ * 确认修改基本信息
+ */
+const confirmUpdateInfo = async () => {
+	try {
+		const res = await getLoginUserInfoApi()
+		await authStore.authInitial(res.data)
+		getUserInfo()
+	} catch (err) {
+		return Promise.reject(err)
+	}
+}
+
 // 保存按钮加载状态
 const btnLoading = ref(false)
 
@@ -201,9 +234,10 @@ const btnLoading = ref(false)
 const save = async () => {
 	try {
 		btnLoading.value = true
-		// TODO: 接口请求
+		const model = cloneDeep(unref(userInfo.value))
+		await updateBaseInfoApi(model)
 		ElMessage.success('保存成功')
-		await getUserInfo()
+		await confirmUpdateInfo()
 	} catch (err) {
 		return Promise.reject(err)
 	} finally {
@@ -217,8 +251,7 @@ const save = async () => {
 const getUserInfo = async () => {
 	try {
 		loading.value = true
-		// TODO: 接口请求
-		userInfo.value = {}
+		userInfo.value = $userInfo.value
 	} catch (err) {
 		return Promise.reject(err)
 	} finally {

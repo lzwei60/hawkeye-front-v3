@@ -24,6 +24,13 @@ const routes = [
 					title: '注册',
 				},
 			},
+			{
+				path: 'forget',
+				component: () => import('@/views/login/forgetPwd.vue'),
+				meta: {
+					title: '忘记密码',
+				},
+			},
 
 			{
 				path: 'team',

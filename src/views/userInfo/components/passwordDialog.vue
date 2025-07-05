@@ -31,7 +31,10 @@
 </template>
 
 <script setup>
+import { ElMessage } from 'element-plus'
+import { updatePasswordApi } from '@/api/modules/user.js'
 import { emailRE } from '@/utils/validate'
+
 defineOptions({
 	name: 'passwordDialog',
 })
@@ -101,7 +104,11 @@ const confirm = async () => {
 		btnLoading.value = true
 		const { newEmail, newCode } = unref(formModel)
 		await formValidate()
-		// TODO: 校验密码是否正确
+		const res = await updatePasswordApi({
+			oldPassword: formModel.value.oldPwd,
+			newPassword: formModel.value.newPwd,
+		})
+		ElMessage.success('修改成功')
 		emits('confirm', formModel.value)
 		cancle()
 	} catch (err) {

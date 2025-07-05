@@ -1,6 +1,6 @@
 <template>
 	<div class="login_head">
-		<div class="login_head_title pt-12 pb-12">
+		<div class="login_head_title pt-12 pb-12 items-center">
 			<div class="login_head_title_logo mr-5"></div>
 
 			<div class="login_head_title_text text-2xl">鹰眼任务管理系统</div>
@@ -23,7 +23,11 @@
 				</div>
 			</div>
 
-			<div v-else class="login_head_mode_log text-2xl">账号注册</div>
+			<div v-else-if="visibleRegister" class="login_head_mode_log text-2xl">
+				账号注册
+			</div>
+
+			<div v-else class="login_head_mode_log text-2xl">找回密码</div>
 		</div>
 	</div>
 </template>
@@ -45,6 +49,8 @@ const props = defineProps({
 const emits = defineEmits(['change'])
 
 const visibleLogin = computed(() => props.statusType === 'login')
+
+const visibleRegister = computed(() => props.statusType === 'register')
 
 const changeLoginType = (type) => {
 	emits('change', type)

@@ -84,10 +84,21 @@
 </template>
 
 <script setup>
+import { ElMessage } from 'element-plus'
 import { emailRE } from '@/utils/validate'
+import { useAuthStore } from '@/store/modules/auth'
+import {
+	verifyInitEmailApi,
+	updateUserEmailApi,
+	getLoginUserInfoApi,
+} from '@/api/modules/user.js'
+import { sendEmailCodeApi } from '@/api/modules/login'
+
 defineOptions({
 	name: 'EmailDialog',
 })
+
+const authStore = useAuthStore()
 
 const emits = defineEmits('confirm', 'cancle')
 
@@ -95,6 +106,10 @@ const props = defineProps({
 	visible: {
 		type: Boolean,
 		default: false,
+	},
+	email: {
+		type: String,
+		default: '',
 	},
 })
 
@@ -181,7 +196,8 @@ const sendCode = async () => {
 		let email = unref(stepType) === 1 ? 'oldEmail' : 'newEmail'
 
 		await formRef.value?.validateField(email)
-		console.log('验证码已发送')
+		await sendEmailCodeApi({ email: unref(emailModel)[email] })
+		ElMessage.success('验证码发送成功')
 	} catch (err) {
 		return Promise.reject(err)
 	}
@@ -232,7 +248,10 @@ const verifyCorrect = async () => {
 	try {
 		const { oldEmail, oldCode } = unref(emailModel)
 		await formValidate()
-		// TODO: 校验密码是否正确
+		const res = await verifyInitEmailApi({
+			userEmail: oldEmail,
+			code: parseInt(oldCode),
+		})
 		stepType.value = 2
 	} catch (err) {
 		return Promise.reject(err)
@@ -246,7 +265,8 @@ const confirmEmail = async () => {
 	try {
 		const { newEmail, newCode } = unref(emailModel)
 		await formValidate()
-		// TODO: 校验密码是否正确
+		await updateUserEmailApi({ userEmail: newEmail, code: parseInt(newCode) })
+		ElMessage.success('修改成功')
 		emits('confirm', emailModel.value)
 		cancle()
 	} catch (err) {
@@ -267,7 +287,20 @@ watch(
 	() => props.visible,
 	(val) => {
 		if (val) {
+			emailModel.value.oldEmail = props.email
 			formClearValidate()
+		}
+	},
+	{
+		immediate: true,
+	}
+)
+
+watch(
+	() => props.email,
+	(val) => {
+		if (val) {
+			emailModel.value.oldEmail = props.email
 		}
 	},
 	{

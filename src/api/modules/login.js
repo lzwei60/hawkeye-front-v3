@@ -15,5 +15,23 @@ export const loginApi = async (params) => {
  * @returns
  */
 export const registerApi = async (params) => {
-	return request.post('/login', params)
+	return request.post('/register', params)
+}
+
+/**
+ * 发送注册验证码
+ * @param {*} params
+ * @returns
+ */
+export const sendEmailCodeApi = async (params) => {
+	return request.post('/sendCode', params)
+}
+
+/**
+ * 重置密码
+ * @param {*} params
+ * @returns
+ */
+export const resetPasswordApi = async (params) => {
+	return request.post('/resetPassword', params)
 }

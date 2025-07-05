@@ -60,11 +60,12 @@
 					<el-select
 						v-if="tabsCheck"
 						v-model="checkTeamId"
-						placeholder="请选择团队">
+						placeholder="请选择团队"
+						@change="changeTeam">
 						<el-option
 							v-for="item in itemList"
-							:label="item._teamName"
-							:value="item._itemId" />
+							:label="item.label"
+							:value="item.value" />
 					</el-select>
 
 					<div class="content-input" v-else-if="tabsJoin">
@@ -85,17 +86,17 @@
 						v-if="tabsCheck"
 						:loading="loading"
 						type="primary"
-						@click="clickTeam"
-						>进入团队</el-button
-					>
+						@click="clickTeam">
+						进入团队
+					</el-button>
 
 					<el-button
 						v-else-if="tabsJoin"
 						:loading="loading"
 						type="primary"
-						@click="joinItem"
-						>加入团队</el-button
-					>
+						@click="joinItem">
+						加入团队
+					</el-button>
 
 					<template v-else>
 						<el-button @click="cancleCreate">取消</el-button>
@@ -112,11 +113,26 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { useAuthStoreWithOut } from '@/store/modules/auth'
+import { setLocalStorage } from '@/utils/utils'
+import { ConstanEnum } from '@/enums'
+import { useAuth } from '@/hooks'
+import { applyTeamApi, createTeamApi } from '@/api/modules/team.js'
 
 const router = useRouter()
 
+const {
+	$teamList,
+	$userInfo,
+	$changeTeamId,
+	$getTeamAllUser,
+	$getTeamUser,
+	$getTeamList,
+} = useAuth()
+
 // 用户基本信息
-const userInfo = reactive({
+const userInfo = ref({
 	userName: '廖志伟',
 	userHead: '',
 })
@@ -149,8 +165,9 @@ const teamName = ref('')
  * 退出登录
  */
 const logout = () => {
-	// TODO: 需要清空本地存储
 	router.push('/login')
+	const authStore = useAuthStoreWithOut()
+	authStore.authLoginOut(true)
 }
 
 // 加载状态
@@ -166,11 +183,25 @@ const changeTabs = (tab) => {
 }
 
 /**
+ * 切换团队
+ */
+const changeTeam = (id) => {
+	$changeTeamId(id)
+}
+
+/**
  * 进入团队
  */
-const clickTeam = () => {
+const clickTeam = async () => {
 	try {
 		loading.value = true
+		if (!unref(checkTeamId)) {
+			ElMessage.error('请选择团队')
+			return
+		}
+		setLocalStorage(ConstanEnum.HAWK_SYS_TEAM_ID, unref(checkTeamId))
+		await $getTeamAllUser(true)
+		await $getTeamUser(true)
 		router.push('/dashboard/projectManager')
 	} catch (err) {
 		return Promise.reject(err)
@@ -182,18 +213,18 @@ const clickTeam = () => {
 /**
  * 加入团队
  */
-const joinItem = () => {
+const joinItem = async () => {
 	try {
 		loading.value = true
 		if (unref(teamCode).trim() === '') {
 			throw new Error('团队编码不能为空')
 		}
 
-		// TODO: 加入团队接口
-		// const res = await joinTeam(unref(teamCode))
-		if (res.code === 200) {
-			changeTabs('check')
-		}
+		const res = await applyTeamApi({ teamInvitationKey: unref(teamCode) })
+		await $getTeamList(true)
+		await getUserTeamList()
+		ElMessage.success(res.msg)
+		changeTabs('check')
 	} catch (err) {
 		return Promise.reject(err)
 	} finally {
@@ -212,18 +243,64 @@ const cancleCreate = () => {
 /**
  * 创建团队
  */
-const createTeam = () => {
-	loading.value = true
-	if (unref(teamName).trim() === '') {
-		throw new Error('团队名称不能为空')
-	}
-
-	// TODO: 创建团队接口
-	// const res = await joinTeam(unref(teamCode))
-	if (res.code === 200) {
+const createTeam = async () => {
+	try {
+		loading.value = true
+		if (unref(teamName).trim() === '') {
+			throw new Error('团队名称不能为空')
+		}
+		const res = await createTeamApi({
+			teamName: unref(teamName),
+			userEmail: unref(userInfo).userEmail,
+		})
+		ElMessage.success('创建成功，并且已发送团队邀请码到您邮箱')
 		changeTabs('check')
+		await $getTeamList(true)
+		await getUserTeamList()
+	} catch (err) {
+		return Promise.reject(err)
+	} finally {
+		loading.value = false
 	}
 }
+
+/**
+ * 获取用户所属团队列表
+ */
+const getUserTeamList = () => {
+	try {
+		itemList.value = unref($teamList) || []
+		if (itemList.value.length) {
+			checkTeamId.value = itemList.value[0].teamId
+		}
+		changeTeam(unref(checkTeamId))
+	} catch (err) {
+		return Promise.reject(err)
+	}
+}
+
+/**
+ * 获取当前用户信息
+ */
+const getUserInfoData = () => {
+	try {
+		userInfo.value = unref($userInfo) || {}
+	} catch (err) {
+		return Promise.reject(err)
+	}
+}
+
+/**
+ * 初始化
+ */
+const init = async () => {
+	await getUserTeamList()
+	await getUserInfoData()
+}
+
+onMounted(() => {
+	init()
+})
 </script>
 
 <style lang="scss" scoped>

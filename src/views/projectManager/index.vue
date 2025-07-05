@@ -81,13 +81,13 @@
 					show-word-limit />
 			</el-form-item>
 
-			<el-form-item label="项目简介" prop="projectDesc">
+			<el-form-item label="项目简介" prop="projectBrief">
 				<el-input
 					type="textarea"
 					maxlength="500"
 					show-word-limit
 					:rows="4"
-					v-model="formModel.projectDesc" />
+					v-model="formModel.projectBrief" />
 			</el-form-item>
 		</el-form>
 
@@ -105,7 +105,12 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { cloneDeep } from 'lodash-es'
+import { useAuth } from '@/hooks'
+import { getProjectListApi, createProjectApi } from '@/api/modules/project.js'
+
+const { $teamId } = useAuth()
 
 const router = useRouter()
 
@@ -124,7 +129,6 @@ const projectList = ref([])
  * 跳转项目
  */
 const pageToProject = (item) => {
-	console.log('pageToProject')
 	router.push({
 		path: '/dashboard/projectOnce',
 		query: {
@@ -140,7 +144,7 @@ const dialogData = ref({
 
 const formModel = ref({
 	projectName: '',
-	projectDesc: '',
+	projectBrief: '',
 })
 
 const formRules = ref({
@@ -189,9 +193,9 @@ const confirm = async () => {
 		await formValidate()
 
 		const model = cloneDeep(formModel.value)
-
-		// TODO: 调用接口
-
+		model.teamId = unref($teamId)
+		await createProjectApi(model)
+		ElMessage.success('新建成功')
 		cancle()
 		await getProjectList()
 	} catch (err) {
@@ -209,7 +213,11 @@ const pageLoading = ref(false)
 const getProjectList = async () => {
 	try {
 		pageLoading.value = true
-		// TODO: 调用接口
+		const params = {
+			teamId: unref($teamId),
+		}
+		const { data: res } = await getProjectListApi(params)
+		projectList.value = res
 	} catch (err) {
 	} finally {
 		pageLoading.value = false

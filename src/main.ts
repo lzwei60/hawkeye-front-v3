@@ -14,23 +14,31 @@ import '@/styles/index.scss'
 
 import { setupStore } from './store'
 
-import { mockXHR } from '../mock/index'
+// import { mockXHR } from '../mock/index'
+
+import { mixins } from './mixins'
 
 // 判断开发环境
-if (process.env.NODE_ENV == 'development') {
-	mockXHR()
+// if (process.env.VITE_USER_NODE_ENV == 'development') {
+// 	mockXHR()
+// }
+
+async function start() {
+	const app = createApp(App)
+
+	app.use(ElementPlus, {
+		locale: zhCn,
+	})
+
+	app.use(components)
+
+	app.use(router)
+
+	setupStore(app)
+
+	app.mixin(mixins)
+
+	app.mount('#app')
 }
 
-const app = createApp(App)
-
-app.use(ElementPlus, {
-	locale: zhCn,
-})
-
-app.use(router)
-
-setupStore(app)
-
-app.use(components)
-
-app.mount('#app')
+start()
