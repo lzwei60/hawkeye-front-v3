@@ -7,7 +7,7 @@
 		"mock/**/*",
 		"src/**/**/*",
 		"src/api/**/*.js",
-		"src/mixins.js"
+		"src/store/modules/*.js"
 	],
 	"exclude": ["src/**/__tests__/*", "node_modules", "dist", "**/*.js"],
 	"compilerOptions": {

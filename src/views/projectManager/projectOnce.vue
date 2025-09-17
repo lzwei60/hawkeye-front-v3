@@ -3,7 +3,7 @@
 		<div
 			class="header pb-[10px] pl-[18px] pr-[18px] flex items-center justify-between border-b">
 			<div class="header-left flex-1">
-				<div class="title font-medium text-[18px]">项目名称</div>
+				<div class="title font-medium text-[18px]">{{ projectName }}</div>
 
 				<div class="tabs flex items-center mt-[10px]">
 					<div
@@ -28,13 +28,13 @@
 						class="item ml-[-16px] first:ml-0"
 						v-for="(item, index) in projectMemberList"
 						:key="index">
-						<el-avatar
-							:size="38"
-							src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
+						<el-avatar :size="38" :src="item.userHead" />
 					</div>
 				</div>
 
-				<div class="btns ml-[18px]">
+				<div
+					class="btns ml-[18px]"
+					v-if="isProjectManager || $isTeamSupperManager">
 					<el-button @click="pageToMemberManage('4', true)">添加成员</el-button>
 				</div>
 			</div>
@@ -42,7 +42,7 @@
 
 		<div class="content mt-[18px] h-[calc(100%-105px)]">
 			<transition name="el-fade-in">
-				<TaskList v-if="tabId === '1'" />
+				<TaskList v-if="tabId === '1'" :projectMemberList="projectMemberList" />
 			</transition>
 
 			<transition name="el-fade-in">
@@ -50,13 +50,17 @@
 			</transition>
 
 			<transition name="el-fade-in">
-				<CalendarList v-if="tabId === '3'" />
+				<CalendarList
+					v-if="tabId === '3'"
+					:projectMemberList="projectMemberList" />
 			</transition>
 
 			<transition name="el-fade-in">
 				<MemberManager
 					v-if="tabId === '4'"
-					:visibleAddMember="visibleAddMember" />
+					:projectMemberList="projectMemberList"
+					:visibleAddMember="visibleAddMember"
+					@save="getProjectMemberList" />
 			</transition>
 		</div>
 	</div>
@@ -68,12 +72,30 @@ import FileList from './components/fileList.vue'
 import CalendarList from './components/calendarList.vue'
 import MemberManager from './components/memberManager.vue'
 
-import { useTask } from '@/hooks'
+import { useTask, useAuth } from '@/hooks'
+import { getProjectMembersApi } from '@/api/modules/project'
+
+const { $userId, $projectId, $isTeamSupperManager, $projectList } = useAuth()
 
 const { initMemberList } = useTask()
 
-const projectName = ref('项目名称')
-const projectId = ref(123)
+// 项目名称
+const projectName = computed(() => {
+	return (
+		$projectList.value.find((item) => item.projectId === $projectId.value)
+			?.projectName || ''
+	)
+})
+
+// 是否是项目管理员
+const isProjectManager = computed(() => {
+	const findData = unref(projectMemberList).find(
+		(item) => item.userId === $userId.value
+	)
+	if (!findData) return false
+	if (findData.roles.includes(3)) return true
+	return false
+})
 
 const tabId = ref('1')
 const tabsList = ref([
@@ -104,10 +126,25 @@ const pageToMemberManage = (id, type) => {
 }
 
 /**
+ * 获取项目成员列表
+ */
+const getProjectMemberList = async () => {
+	try {
+		const params = {
+			projectId: $projectId.value,
+		}
+		const res = await getProjectMembersApi(params)
+		projectMemberList.value = res.data.filter((item) => item.isDelete === 0)
+	} catch (err) {
+		return Promise.reject(err)
+	}
+}
+
+/**
  * 初始化
  */
 const initial = () => {
-	projectMemberList.value = initMemberList
+	getProjectMemberList()
 }
 
 onMounted(() => {

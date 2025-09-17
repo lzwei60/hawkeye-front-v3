@@ -34,9 +34,41 @@
 			</div>
 		</div>
 
-		<el-button :icon="Plus" type="primary" @click="openAddMemberDialog">
-			添加成员
-		</el-button>
+		<div>
+			<el-button
+				v-if="memberList.length > 1 && tabValue === 'all'"
+				:loading="pageLoading"
+				size="small"
+				type="text"
+				class="!text-[red] hover:opacity-70"
+				plain
+				@click="exitTeam">
+				退出团队
+			</el-button>
+			<template v-if="$isTeamSupperManager">
+				<el-button
+					size="small"
+					:loading="pageLoading"
+					type="text"
+					@click="handoverPermissions">
+					移交权限
+				</el-button>
+				<el-button
+					size="small"
+					:loading="pageLoading"
+					type="danger"
+					@click="disbandTeam">
+					解散团队
+				</el-button>
+				<el-button
+					size="small"
+					:icon="Plus"
+					type="primary"
+					@click="openAddMemberDialog">
+					添加成员
+				</el-button>
+			</template>
+		</div>
 	</div>
 
 	<div
@@ -46,7 +78,7 @@
 			class="flex items-center justify-between border-t py-[10px] mb-[10px] last:mb-0"
 			v-for="(item, index) in memberList"
 			:key="item.userId">
-			<div class="flex items-center">
+			<div class="flex items-center" @click="openDrawer(item.userId)">
 				<el-avatar :src="item.userHead" size="large" />
 
 				<div class="ml-[18px] font-bold text-[16px]">{{ item.userName }}</div>
@@ -100,17 +132,29 @@
 			<div>{{ item.userEmail }}</div>
 
 			<div v-if="tabValue === 'all'">
-				<el-button type="info" link @click="removeMember(item, index)">
+				<el-button
+					v-if="$isTeamSupperManager && item.userId !== $userInfo.userId"
+					type="info"
+					link
+					@click="removeMember(item, index)">
 					移除
 				</el-button>
 			</div>
 
 			<div v-else>
-				<el-button type="danger" link @click="rejectMember(item, index)">
+				<el-button
+					v-if="$isTeamSupperManager"
+					type="danger"
+					link
+					@click="rejectMember(item, index)">
 					拒绝
 				</el-button>
 
-				<el-button type="primary" link @click="agreeMember(item, index)">
+				<el-button
+					v-if="$isTeamSupperManager"
+					type="primary"
+					link
+					@click="agreeMember(item, index)">
 					通过
 				</el-button>
 			</div>
@@ -150,9 +194,27 @@
 			</div>
 		</template>
 	</el-dialog>
+
+	<HandoverSelect
+		ref="handoverSelectRef"
+		type="team"
+		:projectMemberList="
+			$teamUserList.filter((item) => item.userId !== $userInfo.userId)
+		"
+		@confirm="confrimHandover" />
+
+	<el-drawer
+		v-model="drawerPropsData.visible"
+		:size="drawerPropsData.width"
+		:with-header="false">
+		<UserInfo :userId="drawerPropsData.userId" />
+	</el-drawer>
 </template>
 
 <script setup>
+import HandoverSelect from '../projectManager/components/handoverSelect.vue'
+import UserInfo from '@/components/userInfo/index.vue'
+import { useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { useAuth, useTeam } from '@/hooks'
@@ -162,13 +224,26 @@ import {
 	updateTeamUserStatusApi,
 	regenerateTeamInvitationKeyApi,
 	updateTeamUserIdentityApi,
+	removeTeamUserApi,
+	quitTeamMemberApi,
+	dissolveTeamApi,
 } from '@/api/modules/team.js'
 import { cloneDeep } from 'lodash-es'
 
-const { initRoleList, initMemberList, initNewMemberList } = useTeam()
+const router = useRouter()
 
-const { $teamId, $teamList, $getTeamList, $getTeamAllUser, $getTeamUser } =
-	useAuth()
+const { initRoleList, getRolesData } = useTeam()
+
+const {
+	$teamId,
+	$teamList,
+	$getTeamList,
+	$teamUserList,
+	$changeTeamId,
+	$getTeamAllUser,
+	$getTeamUser,
+	$isTeamSupperManager,
+} = useAuth()
 
 // 用户列表
 const memberList = ref([])
@@ -226,6 +301,21 @@ const getNewMemberList = async () => {
 	}
 }
 
+// 抽屉弹窗
+const drawerPropsData = reactive({
+	visible: false,
+	width: '600px',
+	userId: null,
+})
+
+/**
+ * 打开抽屉弹窗
+ */
+const openDrawer = (userId) => {
+	drawerPropsData.visible = true
+	drawerPropsData.userId = userId
+}
+
 // 弹窗数据
 const dialogPropsData = reactive({
 	visible: false,
@@ -276,12 +366,103 @@ const createCode = async () => {
 	}
 }
 
+const handoverSelectRef = ref()
+
 /**
- * 获取角色名
+ * 移交管理员权限
  */
-const getRolesData = (role, field) => {
-	const roleName = initRoleList.value.find((item) => item.roleId === role)
-	return roleName ? roleName[field] : ''
+const handoverPermissions = () => {
+	handoverSelectRef.value && handoverSelectRef.value.open()
+}
+
+/**
+ * 确认移交管理员权限
+ */
+const confrimHandover = async () => {
+	getAllMemberList()
+	await $getTeamList(true)
+	await $getTeamAllUser(true)
+	await $getTeamUser(true)
+}
+
+const pageLoading = ref(false)
+
+/**
+ * 退出团队
+ */
+const exitTeam = async () => {
+	try {
+		pageLoading.value = true
+		await ElMessageBox.confirm(`请确认是否退出团队`, '提示', {
+			confirmButtonText: '确定',
+			type: 'warning',
+			closeOnClickModal: false,
+			closeOnPressEscape: false,
+		})
+		if (unref($isTeamSupperManager)) {
+			ElMessage.warning('超级管理员不能退出团队,请移交管理员权限')
+			return
+		}
+
+		await quitTeamMemberApi({
+			teamId: unref($teamId),
+		})
+
+		await confrimHandover()
+		if (unref($teamList).length) {
+			$changeTeamId(unref($teamList)[0].teamId)
+			changeTab(unref(tabValue))
+		} else {
+			router.push('./team')
+		}
+
+		ElMessage.success('退出成功')
+	} catch (err) {
+		return Promise.reject(err)
+	} finally {
+		pageLoading.value = false
+	}
+}
+
+/**
+ * 解散团队
+ */
+const disbandTeam = async () => {
+	try {
+		pageLoading.value = true
+		await ElMessageBox.confirm(
+			`该团队所有的内容都将被删除，确认解散该团队吗？`,
+			'提示',
+			{
+				confirmButtonText: '确定',
+				type: 'warning',
+				closeOnClickModal: false,
+				closeOnPressEscape: false,
+			}
+		)
+		if (!unref($isTeamSupperManager)) {
+			ElMessage.warning('你暂无权限解散团队')
+			return
+		}
+
+		await dissolveTeamApi({
+			teamId: unref($teamId),
+		})
+
+		await confrimHandover()
+		if (unref($teamList).length) {
+			$changeTeamId(unref($teamList)[0].teamId)
+			changeTab(unref(tabValue))
+		} else {
+			router.push('./team')
+		}
+
+		ElMessage.success('解散成功')
+	} catch (err) {
+		return Promise.reject(err)
+	} finally {
+		pageLoading.value = false
+	}
 }
 
 /**
@@ -313,13 +494,24 @@ const changeRole = async (roleId, item) => {
 const removeMember = async (item, index) => {
 	try {
 		loading.value = true
-		await ElMessageBox.confirm('确定移除该成员吗？', '提示', {
-			confirmButtonText: '确定',
-			cancelButtonText: '取消',
-			type: 'warning',
+		await ElMessageBox.confirm(
+			'确定移除该成员吗？移除后，该成员将无法访问团队信息，项目信息，任务信息等',
+			'提示',
+			{
+				confirmButtonText: '确定',
+				cancelButtonText: '取消',
+				type: 'warning',
+			}
+		)
+		await removeTeamUserApi({
+			teamId: unref($teamId),
+			deleteId: item.userId,
 		})
-		memberList.value.splice(index, 1)
-		// TODO: 需要移除团队成员所属的项目，项目所属任务，设置执行人为空
+		ElMessage.success('移除成功')
+
+		getAllMemberList()
+		await $getTeamAllUser(true)
+		await $getTeamUser(true)
 	} catch (err) {
 		return Promise.reject(err)
 	} finally {

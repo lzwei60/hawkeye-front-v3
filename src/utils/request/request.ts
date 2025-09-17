@@ -8,9 +8,11 @@ import axios, {
 	InternalAxiosRequestConfig,
 	AxiosResponse,
 } from 'axios'
-import { useRouter } from 'vue-router'
+import router from '@/router'
+import fileDownload from 'js-file-download'
 import { ErrMessage } from './status'
 import { ElMessage } from 'element-plus'
+import { useAuthStoreWithOut } from '@/store/modules/auth'
 
 // 自定义请求返回数据的类型
 interface Data<T> {
@@ -22,6 +24,7 @@ interface Data<T> {
 // 扩展 InternalAxiosRequestConfig，让每个请求都可以控制是否要loading
 interface RequestInternalAxiosRequestConfig extends InternalAxiosRequestConfig {
 	showLoading?: boolean
+	downloadFile?: boolean
 }
 
 // 拦截器
@@ -118,6 +121,9 @@ class Request {
 				if (token && config.headers) {
 					config.headers.Authorization = `Bearer ${token}` // 后端规范不同，也可能是 X-Token 等
 				}
+				if (config.downloadFile) {
+					config.responseType = 'blob'
+				}
 
 				return config
 			}
@@ -136,6 +142,17 @@ class Request {
 					ElMessage.error(data.msg || '请求失败')
 					return Promise.reject(new Error(data.msg || '请求失败'))
 				}
+				if ((res.config as RequestInternalAxiosRequestConfig).downloadFile) {
+					const disposition = res.headers['content-disposition']
+					if (disposition) {
+						const matched = disposition.match(/filename=(.*)/i)
+						matched &&
+							fileDownload(
+								res.data,
+								decodeURIComponent(matched[1].replaceAll(/\"/g, ''))
+							)
+					}
+				}
 				return res
 			},
 			(err) => {
@@ -143,8 +160,9 @@ class Request {
 				if (this.loading) this.loading = false
 				if (response?.status === 401) {
 					ElMessage.error('登录已过期，请重新登录')
-					localStorage.removeItem('token')
-					useRouter().push('/login')
+					router.push('/login')
+					const authStore = useAuthStoreWithOut()
+					authStore.authLoginOut()
 					return Promise.reject(new Error('未授权'))
 				}
 				// 根据不同状态码，返回不同信息

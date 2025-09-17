@@ -100,6 +100,14 @@ const routes = [
 							menu: false,
 						},
 					},
+					{
+						path: 'notice',
+						component: () => import('@/views/notice/index.vue'),
+						meta: {
+							title: '个人中心',
+							menu: false,
+						},
+					},
 				],
 			},
 		],

@@ -186,7 +186,7 @@ export const useTeamStore = defineStore({
 		$changeTeamId(itemId) {
 			this.$teamId = itemId
 			setLocalStorage(ConstanEnum.HAWK_SYS_TEAM_ID, itemId)
-			this.$getTeamAllUser(true)
+			// this.$getTeamAllUser(true)
 			this.$getTeamUser(true)
 		},
 

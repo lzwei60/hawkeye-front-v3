@@ -160,10 +160,13 @@ import {
 } from '@/api/modules/login'
 import { useAuthStore } from '@/store/modules/auth'
 import { ConstanEnum } from '@/enums'
+import { useSocket } from '@/hooks'
 
 const router = useRouter()
 
 const authStore = useAuthStore()
+
+const { socketConnect } = useSocket()
 
 const props = defineProps({
 	// 状态
@@ -434,6 +437,8 @@ const login = async () => {
 		ElMessage.success('登录成功')
 
 		await authStore.authInitial(res.data)
+
+		socketConnect()
 
 		router.push('./team')
 	} catch (err) {

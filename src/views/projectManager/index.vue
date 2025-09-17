@@ -77,7 +77,7 @@
 			<el-form-item label="项目名称" prop="projectName">
 				<el-input
 					v-model="formModel.projectName"
-					maxlength="8"
+					maxlength="16"
 					show-word-limit />
 			</el-form-item>
 
@@ -110,7 +110,7 @@ import { cloneDeep } from 'lodash-es'
 import { useAuth } from '@/hooks'
 import { getProjectListApi, createProjectApi } from '@/api/modules/project.js'
 
-const { $teamId } = useAuth()
+const { $teamId, $changeProjectList, $changeProjectId } = useAuth()
 
 const router = useRouter()
 
@@ -129,6 +129,7 @@ const projectList = ref([])
  * 跳转项目
  */
 const pageToProject = (item) => {
+	$changeProjectId(item.projectId)
 	router.push({
 		path: '/dashboard/projectOnce',
 		query: {
@@ -218,6 +219,7 @@ const getProjectList = async () => {
 		}
 		const { data: res } = await getProjectListApi(params)
 		projectList.value = res
+		$changeProjectList(projectList.value)
 	} catch (err) {
 	} finally {
 		pageLoading.value = false

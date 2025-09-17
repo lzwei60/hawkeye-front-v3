@@ -80,3 +80,39 @@ export const regenerateTeamInvitationKeyApi = async (params) => {
 export const updateTeamUserIdentityApi = async (params) => {
 	return request.post('/updateTeamUserIdentity', params)
 }
+
+/**
+ * 移除团队成员
+ * @param params
+ * @returns
+ */
+export const removeTeamUserApi = async (params) => {
+	return request.post('/removeTeamUser', params)
+}
+
+/**
+ * 转让团队超级管理员
+ * @param params
+ * @returns
+ */
+export const transferTeamSupperAdminApi = async (params) => {
+	return request.post('/transferTeamSupperAdmin', params)
+}
+
+/**
+ * 退出团队
+ * @param params
+ * @returns
+ */
+export const quitTeamMemberApi = async (params) => {
+	return request.post('/quitTeamMember', params)
+}
+
+/**
+ * 解散团队
+ * @param params
+ * @returns
+ */
+export const dissolveTeamApi = async (params) => {
+	return request.post('/dissolveTeam', params)
+}

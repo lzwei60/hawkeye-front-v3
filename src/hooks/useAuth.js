@@ -1,11 +1,13 @@
 // composables/useUserTeamTools.ts
 import { useAuthStoreWithOut } from '@/store/modules/auth'
 import { useTeamStoreWithOut } from '@/store/modules/team'
+import { useProjectStoreWithOut } from '@/store/modules/project'
 import { createMap } from '@/utils/utils'
 import { isVoid } from '@/utils/validate' //
 export function useAuth() {
 	const authStore = useAuthStoreWithOut()
 	const teamStore = useTeamStoreWithOut()
+	const projectStore = useProjectStoreWithOut()
 
 	const $userInfo = computed(() => authStore.$userInfo || {})
 	const $userAccount = computed(() => authStore.$userAccount || null)
@@ -18,7 +20,30 @@ export function useAuth() {
 	const $teamAllUserList = computed(() => teamStore.$teamAllUserList || [])
 	const $teamList = computed(() => teamStore.$teamList || [])
 	const $userMap = computed(() => {
-		return createMap($teamAllUserList.value, 'username', 'nickname')
+		return createMap($teamAllUserList.value, 'userId', 'userName')
+	})
+
+	const $projectId = computed(() => projectStore.$projectId || null)
+	const $projectList = computed(() => projectStore.$projectList || null)
+
+	const $isTeamSupperManager = computed(() => {
+		const findTeam = unref($teamList).find(
+			(item) => item.teamId === unref($teamId)
+		)
+		if (findTeam) {
+			return findTeam.superAdmin.includes(unref($userId))
+		}
+		return false
+	})
+
+	const $isTeamManager = computed(() => {
+		const findTeam = unref($teamList).find(
+			(item) => item.teamId === unref($teamId)
+		)
+		if (findTeam) {
+			return findTeam.teamAdmin.includes(unref($userId))
+		}
+		return false
 	})
 
 	/**
@@ -94,6 +119,20 @@ export function useAuth() {
 		return teamStore.$changeTeamId(teamId)
 	}
 
+	/**
+	 * 切换项目
+	 */
+	function $changeProjectId(projectId) {
+		return projectStore.$changeProjectId(projectId)
+	}
+
+	/**
+	 * 切换项目
+	 */
+	function $changeProjectList(projectList) {
+		return projectStore.$changeProjectList(projectList)
+	}
+
 	return {
 		$userInfo,
 		$userAccount,
@@ -107,10 +146,19 @@ export function useAuth() {
 		$teamList,
 		$userMap,
 
+		$projectId,
+		$projectList,
+
+		$isTeamSupperManager,
+		$isTeamManager,
+
 		$getUserNickName,
 		$getTeamList,
 		$getTeamAllUser,
 		$getTeamUser,
 		$changeTeamId,
+
+		$changeProjectId,
+		$changeProjectList,
 	}
 }

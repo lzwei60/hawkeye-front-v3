@@ -1,35 +1,34 @@
 <template>
 	<div class="flex items-center justify-between">
-		<el-checkbox v-model="visibleComplete" size="large">
+		<el-checkbox
+			:checked="task.completionStatus === 1"
+			@change="(val) => changeTaskStatus(val)">
 			<div class="flex items-center">
-				<span>主任务</span>
-
-				<Icon-ep-operation class="ml-[10px] text-[#999999]" />
-
-				<span class="ml-[10px] text-[#999999] font-[12px]">0/10</span>
+				<span>{{ task.taskName }}</span>
 			</div>
 		</el-checkbox>
 
-		<div class="flex items-center">
+		<div class="flex items-center w-[300px] justify-end">
 			<div class="relative">
 				<el-tag
-					v-if="task.deadline"
+					v-if="task.deadlineTime"
 					class="cursor-pointer"
 					effect="dark"
 					type="info"
 					round
 					disable-transitions
-					:color="getDeadLineColor(task.deadline)">
-					5月10日
+					:color="getDeadLineColor(task.deadlineTime)">
+					{{ task.deadlineTime }}
 				</el-tag>
 
 				<div v-else class="text-[#999999] cursor-pointer">设置截止时间</div>
 
 				<div class="absolute left-0 top-[-3px] z-[9] opacity-0 w-[78px]">
 					<el-date-picker
-						v-model="task.deadline"
+						v-model="task.deadlineTime"
 						type="date"
-						value-format="YYYY-MM-DD" />
+						value-format="YYYY-MM-DD"
+						@change="changeDeadLineTime" />
 				</div>
 			</div>
 
@@ -96,7 +95,7 @@
 								v-else
 								:src="
 									findObjectLabel(task.principal, 'userId', teamMemberList)
-										?.headImg || ''
+										?.userHead || ''
 								"
 								size="small" />
 
@@ -124,7 +123,7 @@
 										v-else
 										:src="
 											findObjectLabel(item.userId, 'userId', teamMemberList)
-												?.headImg || ''
+												?.userHead || ''
 										"
 										size="small" />
 								</div>
@@ -143,15 +142,19 @@
 </template>
 
 <script setup>
-import { useTask, useTeam } from '@/hooks'
+import { useTask, useAuth } from '@/hooks'
+import { cloneDeep } from 'lodash-es'
+import { updateTaskApi } from '@/api/modules/task.js'
 
-const { isExpired } = useTask()
+const { $userId, $teamUserList } = useAuth()
 
-const { initMemberList } = useTeam()
+const { isExpired, priorityOptions } = useTask()
 
 defineOptions({
 	name: 'OnceTask',
 })
+
+const emits = defineEmits(['update'])
 
 const props = defineProps({
 	task: {
@@ -160,25 +163,11 @@ const props = defineProps({
 	},
 })
 
-const priorityOptions = ref([
-	{ value: 0, label: '最高', color: '#df3c2f' },
-	{ value: 1, label: '较高', color: '#f5941d' },
-	{ value: 2, label: '普通', color: '#999999' },
-	{ value: 3, label: '较低', color: '#51b52f' },
+// 团队成员
+const teamMemberList = ref([
+	{ userId: '', userName: '无负责人', userHead: '' },
+	...unref($teamUserList),
 ])
-
-const visibleComplete = ref(false)
-
-/**
- * 根据截止时间判断颜色
- */
-const getDeadLineColor = (deadline) => {
-	if (isExpired(deadline, 'date')) {
-		return '#df3c2f'
-	} else {
-		return '#999999'
-	}
-}
 
 const popoverRef = ref()
 const popoverUserRef = ref()
@@ -192,19 +181,75 @@ const findObjectLabel = (id, key, options) => {
 }
 
 /**
- * 修改数据
+ * 根据截止时间判断颜色
  */
-const changeValue = (prop, value) => {
-	props.task[prop] = value
-	popoverRef.value && popoverRef.value.hide()
-	popoverUserRef.value && popoverUserRef.value.hide()
+const getDeadLineColor = (deadline) => {
+	if (isExpired(deadline, 'date')) {
+		return '#df3c2f'
+	} else {
+		return '#999999'
+	}
 }
 
-// 团队成员
-const teamMemberList = ref([
-	{ userId: '', userName: '所有成员', headImg: '' },
-	...unref(initMemberList),
-])
+/**
+ * 修改任务状态
+ */
+const changeTaskStatus = async (checked) => {
+	try {
+		const newTask = cloneDeep(props.task)
+		newTask.completionStatus = checked ? 1 : 0
+		newTask.consummator = checked ? unref($userId) : ''
+		const type = checked ? 'finish' : 'unfinish'
+
+		await updateTask(newTask, type)
+	} catch (err) {
+		return Promise.reject(err)
+	}
+}
+
+/**
+ * 修改截止时间
+ */
+const changeDeadLineTime = async (date) => {
+	try {
+		const newTask = cloneDeep(props.task)
+		newTask.deadlineTime = date
+		await updateTask(newTask, 'deadlineTime')
+	} catch (err) {
+		return Promise.reject(err)
+	}
+}
+
+/**
+ * 修改数据
+ */
+const changeValue = async (prop, value) => {
+	try {
+		const newTask = cloneDeep(props.task)
+		newTask[prop] = value
+		popoverRef.value && popoverRef.value.hide()
+		popoverUserRef.value && popoverUserRef.value.hide()
+		await updateTask(newTask, prop)
+	} catch (err) {
+		return Promise.reject(err)
+	}
+}
+
+/**
+ * 更新任务
+ */
+const updateTask = async (newTask, type) => {
+	try {
+		const params = {
+			...newTask,
+			type,
+		}
+		const { data: res } = await updateTaskApi(params)
+		emits('update')
+	} catch (err) {
+		return Promise.reject(err)
+	}
+}
 </script>
 
 <style lang="scss" scoped>

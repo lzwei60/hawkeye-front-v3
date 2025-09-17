@@ -5,33 +5,42 @@ import { request } from '@/utils/request'
  * @param params
  * @returns
  */
-export const getProjectTotalDataApi = async (params) => {
-	return request.get('/task/projectTotalData', params)
+export const getTaskStatisticsApi = async (params) => {
+	return request.get('/getTaskStatistics', params)
 }
 
 /**
- * 获取项目重点关注接口
+ * 获取项目重点关注总数据接口
  * @param params
  * @returns
  */
-export const getProjectEmphasisDataApi = async (params) => {
-	return request.get('/task/projectEmphasisData', params)
+export const getTaskStatusCountApi = async (params) => {
+	return request.get('/getTaskStatusCount', params)
 }
 
 /**
- * 获取项目进展接口
+ * 查询任务列表（根据状态）接口
  * @param params
  * @returns
  */
-export const getProjectProgressApi = async (params) => {
-	return request.get('/task/projectProgress', params)
+export const getTaskListByStatusApi = async (params) => {
+	return request.get('/getTaskListByStatus', params)
 }
 
 /**
- * 获取项目逾期分布接口
- * @param {*} params
+ * 查询过期未完成任务
+ * @param params
  * @returns
  */
-export const getProjectOverdueApi = async (params) => {
-	return request.get('/task/projectOverdue', params)
+export const getOverdueUnfinishedTasksApi = async (params) => {
+	return request.get('/getOverdueUnfinishedTasks', params)
+}
+
+/**
+ * 查询项目任务进展统计
+ * @param params
+ * @returns
+ */
+export const getProjectTaskStatsApi = async (params) => {
+	return request.get('/getProjectTaskStats', params)
 }

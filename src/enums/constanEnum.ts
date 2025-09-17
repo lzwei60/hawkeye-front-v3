@@ -19,4 +19,10 @@ export enum ConstanEnum {
 
 	// 当前团队存活用户
 	HAWK_TEAM_USER_LIST = 'HAWK_TEAM_USER_LIST',
+
+	// 当前项目 id
+	HAWK_SYS_PROJECT_ID = 'HAWK_SYS_PROJECT_ID',
+
+	// 项目列表
+	HAWK_SYS_PROJECT_LIST = 'HAWK_SYS_PROJECT_LIST',
 }

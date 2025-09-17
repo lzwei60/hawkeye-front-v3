@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { store } from '@/store'
 import { StoreEnum, ConstanEnum } from '@/enums'
 import { useTeamStoreWithOut } from './team.js'
+import { useProjectStoreWithOut } from './project.js'
 
 import { setLocalStorage, getLocalStorage } from '@/utils/utils'
 
@@ -55,6 +56,8 @@ export const useAuthStore = defineStore({
 			useTeamStoreWithOut().$clearTeamList()
 			useTeamStoreWithOut().$clearTeamUser()
 			useTeamStoreWithOut().$clearTeamAllUser()
+			useProjectStoreWithOut().$clearProjectId()
+			useProjectStoreWithOut().$clearProjectList()
 		},
 	},
 })

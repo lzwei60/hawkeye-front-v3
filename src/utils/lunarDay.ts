@@ -8,6 +8,61 @@
  * @农历转公历：calendar.lunar2solar(1987,09,10); //[you can ignore params of prefix 0]
  */
 const calendar = {
+	// 放假日期
+	libertyDayOptions: [
+		// 元旦（1天）
+		'2025-01-01',
+
+		// 春节（7天：1月28日-2月3日，含调休）
+		'2025-01-28',
+		'2025-01-29',
+		'2025-01-30',
+		'2025-01-31',
+		'2025-02-01',
+		'2025-02-02',
+		'2025-02-03',
+		'2025-02-04',
+
+		// 清明节（3天：4月4日-4月6日，含周末）
+		'2025-04-04',
+		'2025-04-05',
+		'2025-04-06',
+
+		// 劳动节（5天：5月1日-5月5日，含调休）
+		'2025-05-01',
+		'2025-05-02',
+		'2025-05-03',
+		'2025-05-04',
+		'2025-05-05',
+
+		// 端午节（3天：6月10日-6月12日，含调休）
+		'2025-05-31',
+		'2025-06-01',
+		'2025-06-02',
+
+		// 中秋节（1天：10月06日，含调休）
+		'2025-10-06',
+
+		,
+		// 国庆节（7天：10月1日-10月8日，含调休）
+		'2025-10-01',
+		'2025-10-02',
+		'2025-10-03',
+		'2025-10-04',
+		'2025-10-05',
+		'2025-10-06',
+		'2025-10-07',
+		'2025-10-08',
+	],
+	// 补班日期
+	workingDayOptions: [
+		'2025-01-27',
+		'2025-02-08',
+		'2025-04-27',
+		'2025-09-28',
+		'2025-10-11',
+	],
+
 	/**
 	 * 农历1900-2100的润大小信息表
 	 * @Array Of Property
@@ -1110,6 +1165,47 @@ const calendar = {
 		const cD = calObj.getUTCDate()
 
 		return this.solar2lunar(cY, cM, cD)
+	},
+
+	/**
+	 * 获取星期几文本
+	 * @param dateStr 日期字符串
+	 * @returns
+	 */
+	getWeekdayText: function (dateStr: string) {
+		const date = new Date(dateStr)
+		const weekText = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+		return weekText[date.getDay()]
+	},
+
+	/**
+	 * 判断是否是假期、补班、正常工作日或周末
+	 * @param dateStr  日期字符串
+	 * @returns
+	 */
+	getDateStatus: function (dateStr: string) {
+		const isHoliday = this.libertyDayOptions.includes(dateStr)
+		const isWorkingDay = this.workingDayOptions.includes(dateStr)
+		const weekday = this.getWeekdayText(dateStr)
+		const day = new Date(dateStr).getDay()
+
+		let status = 0 // 1:法定假日 2:补班日 3:周末 4:工作日
+
+		if (isHoliday) {
+			status = 1
+		} else if (isWorkingDay) {
+			status = 2
+		} else if (day === 0 || day === 6) {
+			status = 3
+		} else {
+			status = 4
+		}
+
+		return {
+			date: dateStr,
+			weekday,
+			status,
+		}
 	},
 }
 

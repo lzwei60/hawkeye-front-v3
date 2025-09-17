@@ -1,21 +1,25 @@
 <template>
-	<div class="task-list">
+	<div class="task-list overflow-hidden overflow-y-auto h-[calc(100vh-230px)]">
 		<div class="query-form flex items-start justify-between">
 			<div class="query-form-left flex-1">
 				<el-form :inline="true" label-width="90px" :model="formModel">
 					<el-form-item label="任务名称">
 						<el-input
 							v-model="formModel.taskName"
-							style="width: 220px"
-							placeholder="请输入" />
+							clearable
+							style="width: 200px"
+							placeholder="请输入"
+							@change="searchFilter" />
 					</el-form-item>
 					<el-form-item label="负责人">
 						<el-select
 							v-model="formModel.principal"
-							style="width: 220px"
-							placeholder="请选择">
+							style="width: 200px"
+							clearable
+							placeholder="请选择"
+							@change="searchFilter">
 							<el-option
-								v-for="item in projectMember"
+								v-for="item in paramsProjectMember"
 								:key="item.userId"
 								:label="item.userName"
 								:value="item.userId" />
@@ -23,9 +27,11 @@
 					</el-form-item>
 					<el-form-item label="任务状态">
 						<el-select
-							v-model="formModel.taskStatus"
-							style="width: 220px"
-							placeholder="请选择">
+							v-model="formModel.completionStatus"
+							clearable
+							style="width: 200px"
+							placeholder="请选择"
+							@change="searchFilter">
 							<el-option
 								v-for="item in taskStatusOptions"
 								:key="item.value"
@@ -36,10 +42,12 @@
 					<el-form-item label="优先级">
 						<el-select
 							v-model="formModel.priority"
-							style="width: 220px"
-							placeholder="请选择">
+							clearable
+							style="width: 200px"
+							placeholder="请选择"
+							@change="searchFilter">
 							<el-option
-								v-for="item in projectMember"
+								v-for="item in priorityOptions"
 								:key="item.value"
 								:label="item.label"
 								:value="item.value" />
@@ -47,40 +55,48 @@
 					</el-form-item>
 					<el-form-item label="截止时间">
 						<el-date-picker
-							v-model="formModel.deadline"
-							style="width: 220px"
+							v-model="formModel.deadlineTime"
+							clearable
+							style="width: 200px"
 							type="daterange"
 							range-separator="-"
 							value-format="YYYY-MM-DD"
 							start-placeholder="开始时间"
-							end-placeholder="结束时间" />
+							end-placeholder="结束时间"
+							@change="searchFilter" />
 					</el-form-item>
 					<el-form-item label="完成时间">
 						<el-date-picker
 							v-model="formModel.finishTime"
-							style="width: 220px"
+							clearable
+							style="width: 200px"
 							type="daterange"
 							range-separator="-"
 							value-format="YYYY-MM-DD"
 							start-placeholder="开始时间"
-							end-placeholder="结束时间" />
+							end-placeholder="结束时间"
+							@change="searchFilter" />
 					</el-form-item>
 				</el-form>
 			</div>
 
 			<div class="query-form-right">
 				<el-button @click="resetFilter">重置</el-button>
-				<el-button type="primary" @click="queryFilter">搜索</el-button>
+				<el-button type="primary" @click="searchFilter">搜索</el-button>
 			</div>
 		</div>
 
 		<div class="btns-group mb-[18px]">
-			<el-button type="primary" @click="addTask">添加任务</el-button>
+			<el-button type="primary" @click="addTask()">添加任务</el-button>
 		</div>
 
-		<div class="table-container">
+		<div
+			class="table-container"
+			v-infinite-scroll="queryLoad"
+			infinite-scroll-disabled="scrollDisabled">
 			<el-table
 				v-loading="loading"
+				ref="taskTableRef"
 				:data="tableData"
 				style="width: 100%"
 				border
@@ -103,21 +119,50 @@
 									ref="inputRef"
 									v-model="editValue"
 									placeholder="输入标题，回车创建，ESC取消"
-									@blur="saveEdit($index, item.prop)"
+									@blur="saveEdit($index, item.prop, row)"
 									@keydown.esc="cancleEdit($index, item.prop)"
-									@keydown.enter="saveEdit($index, item.prop)" />
+									@keydown.enter="saveEdit($index, item.prop, row)" />
 							</template>
 
 							<template v-else>
-								<div v-if="item.prop === 'taskName'" class="flex items-center">
-									<el-checkbox
-										:checked="row.taskStatus === 1"
-										@change="(val) => changeTaskStatus(val, row)" />
-									<div
-										class="ml-[6px]"
-										:class="{ 'line-through': row.taskStatus === 1 }">
-										{{ row[item.prop] }}
+								<div
+									v-if="item.prop === 'taskName'"
+									class="flex items-center justify-between">
+									<div class="flex items-center">
+										<el-checkbox
+											:checked="row.completionStatus === 1"
+											@change="(val) => changeTaskStatus($index, val, row)" />
+										<div
+											class="ml-[6px]"
+											:class="{ 'line-through': row.completionStatus === 1 }">
+											{{ row[item.prop] }}
+										</div>
 									</div>
+
+									<el-popover
+										ref="taskAllPopoverRef"
+										popper-class="task-list-popover"
+										placement="bottom"
+										width="110"
+										trigger="click">
+										<div>
+											<div
+												v-if="row.parentTaskId === '0'"
+												class="p-[5px] cursor-pointer hover:bg-[#f5f5f5]"
+												@mousedown.prevent="addTask(row.taskId, $index, row)">
+												添加子任务
+											</div>
+											<div
+												class="p-[5px] cursor-pointer text-[red] hover:bg-[#f5f5f5]"
+												@mousedown.prevent="deleteTask(row.taskId, row)">
+												删除
+											</div>
+										</div>
+
+										<template #reference>
+											<Icon-ep-more-filled />
+										</template>
+									</el-popover>
 								</div>
 
 								<div v-else-if="item.prop === 'priority'">
@@ -155,7 +200,15 @@
 												class="item flex items-center justify-between cursor-pointer pt-[10px] pb-[10px] pl-[5px] pr-[5px] hover:bg-[#f5f5f5]"
 												v-for="list in priorityOptions"
 												:key="list.value"
-												@click="changeValue($index, item.prop, list.value)">
+												@click="
+													changeValue(
+														$index,
+														item.prop,
+														list.value,
+														row,
+														'priority'
+													)
+												">
 												<div class="flex items-center">
 													<div
 														class="w-[20px] h-[20px] rounded mr-[15px]"
@@ -172,15 +225,15 @@
 									</el-popover>
 								</div>
 
-								<div v-else-if="item.prop === 'deadline'">
+								<div v-else-if="item.prop === 'deadlineTime'">
 									<el-tag
-										v-if="row.deadline"
+										v-if="row.deadlineTime"
 										class="cursor-pointer"
 										effect="dark"
 										type="info"
 										round
 										disable-transitions
-										:color="getDeadLineColor(row.deadline)">
+										:color="getDeadLineColor(row.deadlineTime, row.finishTime)">
 										{{ row[item.prop] }}
 									</el-tag>
 
@@ -192,7 +245,17 @@
 										<el-date-picker
 											v-model="row[item.prop]"
 											type="date"
-											value-format="YYYY-MM-DD" />
+											value-format="YYYY-MM-DD"
+											@change="
+												(val) =>
+													changeValue(
+														$index,
+														item.prop,
+														val,
+														row,
+														'deadlineTime'
+													)
+											" />
 									</div>
 								</div>
 
@@ -205,7 +268,7 @@
 										<template #reference>
 											<div
 												class="flex items-center justify-center cursor-pointer">
-												<div v-if="row.principal === '-1'">
+												<div v-if="row.principal === ''">
 													<Icon-ep-userFilled
 														class="text-[#999999] text-[20px]" />
 												</div>
@@ -217,7 +280,7 @@
 															row.principal,
 															'userId',
 															projectMember
-														)?.headImg || ''
+														)?.userHead || ''
 													"
 													size="small" />
 												<span class="ml-[6px]">
@@ -249,10 +312,18 @@
 													v-for="list in projectMember"
 													:key="list.userId"
 													class="flex items-center justify-between p-[5px] hover:bg-[#f5f5f5]"
-													@click="changeValue($index, item.prop, list.userId)">
+													@click="
+														changeValue(
+															$index,
+															item.prop,
+															list.userId,
+															row,
+															'principal'
+														)
+													">
 													<div class="flex items-center cursor-pointer">
 														<div class="mt-[5px] mr-[15px]">
-															<div v-if="list.userId === '-1'">
+															<div v-if="list.userId === ''">
 																<Icon-ep-userFilled
 																	class="text-[#999999] text-[20px]" />
 															</div>
@@ -261,10 +332,10 @@
 																v-else
 																:src="
 																	findObjectLabel(
-																		list.userName,
+																		list.userId,
 																		'userId',
 																		projectMember
-																	)?.headImg || ''
+																	)?.userHead || ''
 																"
 																size="small" />
 														</div>
@@ -289,6 +360,18 @@
 									</span>
 								</div>
 
+								<div v-else-if="item.prop === 'consummator'">
+									<span class="ml-[6px]">
+										{{
+											findObjectLabel(
+												row.consummator,
+												'userId',
+												$teamAllUserList
+											)?.userName || ''
+										}}
+									</span>
+								</div>
+
 								<div v-else>{{ row[item.prop] }}</div>
 							</template>
 						</div>
@@ -301,16 +384,34 @@
 
 <script setup name="TaskList">
 import { isEmpty, cloneDeep } from 'lodash-es'
-import { useTask } from '@/hooks'
+import {
+	getTaskListApi,
+	createTaskApi,
+	updateTaskApi,
+	deleteTaskApi,
+} from '@/api/modules/task.js'
+import { isVoid } from '@/utils/validate'
+import { useTask, useAuth } from '@/hooks'
 
-const { priorityOptions, initTableData, isExpired } = useTask()
+const { $userId, $teamId, $projectId, $teamAllUserList } = useAuth()
+
+const { priorityOptions, isExpired } = useTask()
+
+const props = defineProps({
+	projectMemberList: {
+		type: Array,
+		default: () => [],
+	},
+})
 
 const DEFAULT_FORMMODEL = {
+	page: 1,
+	limit: 10,
 	taskName: '',
 	principal: '',
-	taskStatus: '',
+	completionStatus: '',
 	priority: '',
-	deadline: [],
+	deadlineTime: [],
 	finishTime: [],
 }
 
@@ -320,15 +421,28 @@ const taskStatusOptions = ref([
 	{ value: 2, label: '已延期' },
 ])
 
-const projectMember = ref([
-	{ userId: '-1', userName: '无负责人', headImg: '' },
-	{ userId: 'liaozhiwei', userName: '廖志伟', headImg: '' },
-])
+// 表格选择项目人员列表
+const projectMember = ref([{ userId: '', userName: '无负责人', userHead: '' }])
 
+// 筛选项选择项目人员列表
+const paramsProjectMember = computed(() => {
+	const list = cloneDeep(unref($teamAllUserList))
+	list.unshift({ userId: '-1', userName: '无负责人', userHead: '' })
+	return list
+})
+
+// 筛选项
 const formModel = ref(cloneDeep(DEFAULT_FORMMODEL))
 
+// 加载状态
 const loading = ref(false)
 
+// 是否需要禁用滚动加载
+const scrollDisabled = computed(() => {
+	return loading.value || tableData.value.length >= tableTotal.value
+})
+
+// 表格配置项
 const tableItem = ref([
 	{
 		prop: 'taskName',
@@ -348,7 +462,7 @@ const tableItem = ref([
 		options: unref(taskStatusOptions),
 	},
 	{
-		prop: 'deadline',
+		prop: 'deadlineTime',
 		label: '截止时间',
 		align: 'center',
 		type: 'date',
@@ -370,6 +484,13 @@ const tableItem = ref([
 		width: '120',
 	},
 	{
+		prop: 'consummator',
+		label: '完成人',
+		type: 'input',
+		align: 'center',
+		width: '120',
+	},
+	{
 		prop: 'finishTime',
 		label: '完成时间',
 		type: 'date',
@@ -385,16 +506,50 @@ const tableItem = ref([
 	},
 ])
 
+// 任务列表数据
 const tableData = ref([])
+
+// 任务列表总数
+const tableTotal = ref(0)
+
+const taskTableRef = ref()
+
+/**
+ * 滚动加载
+ */
+const queryLoad = () => {
+	formModel.value.page += 1
+	getTaskList()
+}
+
+/**
+ * 搜索筛选项
+ */
+const searchFilter = () => {
+	formModel.value.page = 1
+	formModel.value.limit = 10
+	getTaskList()
+}
+
+/**
+ * 重置筛选项
+ */
+const resetFilter = () => {
+	formModel.value = cloneDeep(DEFAULT_FORMMODEL)
+	getTaskList()
+}
 
 /**
  * 获取任务列表
  */
-const getTaskList = () => {
+const getTaskList = async () => {
 	try {
 		loading.value = true
-		// TODO: 请求任务列表
-		tableData.value = cloneDeep(initTableData.value)
+		const params = cloneDeep(unref(formModel))
+		params.projectId = unref($projectId)
+		const { data: res } = await getTaskListApi(params)
+		tableData.value = res.list || []
+		tableTotal.value = res.total || 0
 	} catch (err) {
 		return Promise.reject(err)
 	} finally {
@@ -413,83 +568,11 @@ const findObjectLabel = (id, key, options) => {
 /**
  * 根据截止时间判断颜色
  */
-const getDeadLineColor = (deadline) => {
-	if (isExpired(deadline, 'date')) {
+const getDeadLineColor = (deadlineTime, finishTime) => {
+	if (isExpired(deadlineTime, finishTime, 'date')) {
 		return '#df3c2f'
-	} else {
-		return '#999999'
 	}
-}
-
-/**
- * 查询
- */
-const queryFilter = () => {
-	// 深拷贝初始数据
-	let filteredData = cloneDeep(unref(initTableData))
-
-	// 获取表单数据
-	const { taskName, principal, taskStatus, priority, deadline, finishTime } =
-		formModel.value
-
-	// 过滤数据的函数
-	const filterData = (data) => {
-		return data.filter((item) => {
-			// 任务名称筛选
-			if (taskName && !item.taskName.includes(taskName)) {
-				return false
-			}
-
-			// 负责人筛选
-			if (principal && item.principal !== principal) {
-				return false
-			}
-
-			// 任务状态筛选
-			if (taskStatus !== '' && item.taskStatus !== taskStatus) {
-				return false
-			}
-
-			// 优先级筛选
-			if (priority !== '' && item.priority !== priority) {
-				return false
-			}
-
-			// 截止时间筛选
-			if (deadline && deadline.length === 2) {
-				const [startDate, endDate] = deadline
-				if (item.deadline < startDate || item.deadline > endDate) {
-					return false
-				}
-			}
-
-			// 完成时间筛选
-			if (finishTime && finishTime.length === 2) {
-				const [startDate, endDate] = finishTime
-				if (item.finishTime < startDate || item.finishTime > endDate) {
-					return false
-				}
-			}
-
-			// 如果有子任务，递归过滤
-			if (item.children && item.children.length) {
-				item.children = filterData(item.children)
-			}
-
-			return true
-		})
-	}
-
-	// 执行过滤
-	tableData.value = filterData(filteredData)
-}
-
-/**
- * 重置
- */
-const resetFilter = () => {
-	formModel.value = cloneDeep(DEFAULT_FORMMODEL)
-	tableData.value = cloneDeep(unref(initTableData))
+	return '#999999'
 }
 
 const inputRef = ref()
@@ -497,25 +580,37 @@ const inputRef = ref()
 /**
  * 新增任务
  */
-const addTask = () => {
-	tableData.value.push({
+const addTask = (pId, index, row) => {
+	const newTask = {
 		taskId: null,
-		projectId: 1,
 		taskName: '',
+		projectId: unref($projectId),
+		teamId: unref($teamId),
 		priority: 2,
-		deadline: '',
-		principal: '-1',
-		creator: 'liaozhiwei',
-		finishTime: '',
-		createTime: '',
-		taskStatus: 0,
-		children: [],
-	})
-
-	editCell(unref(tableData).length, 'taskName')
+		deadlineTime: '',
+		principal: '',
+	}
+	let rowIndex = (isVoid(index) ? -1 : index) + 1
+	if (pId) {
+		const findIndex = tableData.value.findIndex((item) => item.taskId === pId)
+		const findData = tableData.value[findIndex]
+		findData.children = findData.children || []
+		newTask.parentTaskId = pId
+		findData.children.unshift(newTask)
+		nextTick(() => {
+			unref(taskTableRef) && unref(taskTableRef).toggleRowExpansion(row, true)
+		})
+	} else {
+		tableData.value.splice(rowIndex, 0, newTask)
+	}
+	editCell(rowIndex, 'taskName')
+	cancleTaskListPopover(index)
 }
 
-const editingCell = ref({ row: null, colProp: null }) // 当前正在编辑的单元格
+// 当前正在编辑的单元格
+const editingCell = ref({ row: null, colProp: null })
+
+// 当前正在编辑的单元格的输入内容
 const editValue = ref('')
 
 /**
@@ -546,8 +641,36 @@ const editCell = (rowIndex, colProp) => {
 /**
  * 保存编辑
  */
-const saveEdit = (rowIndex, colProp) => {
-	tableData.value[rowIndex - 1][colProp] = editValue.value
+const saveEdit = async (rowIndex, colProp, row) => {
+	row[colProp] = editValue.value
+	const newTask = row
+
+	try {
+		if (isVoid(newTask.taskName)) {
+			if (row.parentTaskId) {
+				const findIndex = tableData.value.findIndex(
+					(item) => item.taskId === row.parentTaskId
+				)
+				if (findIndex > -1) {
+					const childFindIndex = tableData.value[findIndex].children.findIndex(
+						(item) => isVoid(item.taskName)
+					)
+					if (childFindIndex > -1) {
+						tableData.value[findIndex].children.splice(childFindIndex, 1)
+					}
+				}
+			} else {
+				tableData.value.splice(rowIndex, 1)
+			}
+			return
+		}
+		await confirmTask(rowIndex, newTask)
+	} catch (err) {
+		if (!newTask.taskId) {
+			tableData.value.splice(rowIndex, 1)
+		}
+		return Promise.reject(err)
+	}
 	cancleEdit(rowIndex, colProp)
 }
 
@@ -555,34 +678,177 @@ const saveEdit = (rowIndex, colProp) => {
  * 退出编辑
  */
 const cancleEdit = (rowIndex, colProp) => {
-	if (isEmpty(tableData.value[rowIndex - 1][colProp])) {
-		tableData.value.splice(rowIndex - 1, 1)
-	}
 	editingCell.value = { row: null, colProp: null }
+}
+
+/**
+ * 新增任务
+ */
+const confirmTask = async (rowIndex, newTask) => {
+	try {
+		const { data: res } = await createTaskApi(newTask)
+		const { taskId, parentTaskId } = res
+		const index = 0
+		succeedUpdateTaskData(res, index, 'add')
+	} catch (err) {
+		return Promise.reject(err)
+	}
+}
+
+/**
+ * 更新任务
+ */
+const updateTask = async (rowIndex, newTask, type) => {
+	try {
+		const params = {
+			...newTask,
+			type,
+		}
+		const { data: res } = await updateTaskApi(params)
+		succeedUpdateTaskData(res, rowIndex, 'update')
+	} catch (err) {
+		return Promise.reject(err)
+	}
+}
+
+/**
+ * 成功新建 || 更新 任务
+ */
+const succeedUpdateTaskData = (res, rowIndex, type) => {
+	if (res.parentTaskId === '0') {
+		const children = cloneDeep(tableData.value[rowIndex].children)
+		tableData.value[rowIndex] = res
+		tableData.value[rowIndex].children = children
+	} else {
+		const findIndex = tableData.value.findIndex(
+			(item) => item.taskId === res.parentTaskId
+		)
+		if (findIndex > -1) {
+			if (rowIndex > -1) {
+				tableData.value[findIndex].children[rowIndex] = res
+			}
+		}
+	}
 }
 
 /**
  * 是否完成任务
  */
-const changeTaskStatus = (checked, row) => {
-	row.taskStatus = checked ? 1 : 0
-}
-
-const popoverAllRef = ref({})
-
-const popoverRef = (index, prop, e) => {
-	popoverAllRef.value[prop] = popoverAllRef.value[prop] || {}
-	popoverAllRef.value[prop][index] = e
+const changeTaskStatus = async (rowIndex, checked, row) => {
+	let { newTask, index, pIndex } = getCurrentOperatorData(row)
+	if (row.parentTaskId === '0') {
+		newTask = tableData.value[index]
+	} else {
+		newTask = tableData.value[pIndex].children[index]
+	}
+	try {
+		newTask.completionStatus = checked ? 1 : 0
+		newTask.consummator = checked ? unref($userId) : ''
+		const type = checked ? 'finish' : 'unfinish'
+		await updateTask(index, newTask, type)
+	} catch (err) {
+		newTask.completionStatus = !checked ? 1 : 0
+		newTask.consummator = !checked ? unref($userId) : ''
+		return Promise.reject(err)
+	}
 }
 
 /**
  * 修改数据
  */
-const changeValue = (rowIndex, prop, value) => {
-	if (!tableData.value[rowIndex]) return
-	tableData.value[rowIndex][prop] = value
-	popoverAllRef.value[prop] && popoverAllRef.value[prop][rowIndex].hide()
+const changeValue = async (rowIndex, prop, value, row, type) => {
+	const { newTask, index } = getCurrentOperatorData(row)
+	const initValue = cloneDeep(newTask[prop])
+	try {
+		newTask[prop] = value
+		popoverAllRef.value[prop] && popoverAllRef.value[prop][rowIndex].hide()
+		await updateTask(index, newTask, type)
+	} catch (err) {
+		newTask[prop] = initValue
+		return Promise.reject(err)
+	}
 }
+
+/**
+ * 当前操作任务
+ */
+const getCurrentOperatorData = (row) => {
+	let newTask = {}
+	let pIndex = 0
+	let index = 0
+	if (row.parentTaskId === '0') {
+		index = tableData.value.findIndex((item) => item.taskId === row.taskId)
+		newTask = tableData.value[index]
+	} else {
+		pIndex = tableData.value.findIndex(
+			(item) => item.taskId === row.parentTaskId
+		)
+		const findData = tableData.value[pIndex]
+		index = findData.children.findIndex((item) => item.taskId === row.taskId)
+		newTask = findData.children[index]
+	}
+
+	return { newTask, index, pIndex }
+}
+
+/**
+ * 操作弹出层tips
+ */
+const popoverAllRef = ref({})
+const popoverRef = (index, prop, e) => {
+	popoverAllRef.value[prop] = popoverAllRef.value[prop] || {}
+	popoverAllRef.value[prop][index] = e
+}
+
+const taskAllPopoverRef = ref()
+
+/**
+ * 删除任务
+ */
+const deleteTask = async (taskId, row) => {
+	try {
+		const { data: res } = await deleteTaskApi({ taskId })
+		ElMessage.success('删除成功')
+		const findIndex = tableData.value.findIndex(
+			(item) =>
+				item.taskId === (row.parentTaskId === '0' ? taskId : row.parentTaskId)
+		)
+
+		if (row.parentTaskId === '0') {
+			tableData.value.splice(findIndex, 1)
+		} else {
+			const childFindIndex = tableData.value[findIndex].children.findIndex(
+				(item) => item.taskId === taskId
+			)
+			if (childFindIndex > -1) {
+				tableData.value[findIndex].children.splice(childFindIndex, 1)
+			}
+		}
+	} catch (err) {
+		return Promise.reject(err)
+	}
+	cancleTaskListPopover(index)
+}
+
+/**
+ * 关闭操作列表弹窗
+ */
+const cancleTaskListPopover = (index) => {
+	index &&
+		unref(taskAllPopoverRef)[index] &&
+		unref(taskAllPopoverRef)[index].hide()
+}
+
+watch(
+	() => props.projectMemberList,
+	(arr) => {
+		projectMember.value.push(...props.projectMemberList)
+	},
+	{
+		deep: true,
+		immediate: true,
+	}
+)
 
 /**
  * 初始化
@@ -619,5 +885,11 @@ onMounted(() => {
 			}
 		}
 	}
+}
+</style>
+
+<style lang="scss">
+.task-list-popover {
+	min-width: 110px !important;
 }
 </style>

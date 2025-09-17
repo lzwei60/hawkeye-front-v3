@@ -100,9 +100,19 @@ export const useTeam = () => {
 		},
 	])
 
+	/**
+	 * 获取角色名
+	 */
+	const getRolesData = (role, field) => {
+		const roleName = initRoleList.value.find((item) => item.roleId === role)
+		return roleName ? roleName[field] : ''
+	}
+
 	return {
 		initMemberList,
 		initNewMemberList,
 		initRoleList,
+
+		getRolesData,
 	}
 }

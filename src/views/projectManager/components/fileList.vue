@@ -5,19 +5,28 @@
 				class="mr-[20px] flex items-center cursor-pointer"
 				@click="handleBack">
 				<Icon-ep-arrow-left-bold v-if="deepList.length > 1" />
-				<span>{{ deepList[deepList.length - 1].name }}</span>
+				<span>{{ deepList[deepList.length - 1].fileName }}</span>
 			</div>
 
 			<el-upload
 				class="mr-[10px]"
-				:show-file-list="false"
-				:accept="acceptList"
+				action="/api/uploadFile"
+				name="file"
+				:data="getUploadData"
+				:headers="{
+					Authorization: `Bearer ${$userInfo.token}`,
+				}"
+				:on-success="uploadSuccess"
+				:on-error="uploadError"
 				:before-upload="beforeUpload"
-				:on-success="uploadSuccess">
-				<el-button plain>上传文件</el-button>
+				:accept="acceptList"
+				:show-file-list="false">
+				<el-button :loading="btnLoading" plain>上传文件</el-button>
 			</el-upload>
 
-			<el-button plain @click="changeFolder">创建文件夹 </el-button>
+			<el-button :loading="btnLoading" plain @click="changeFolder">
+				创建文件夹
+			</el-button>
 		</div>
 
 		<div class="flex items-center pl-[20px]">
@@ -37,74 +46,88 @@
 		v-loading="pageLoading"
 		class="px-[20px] pb-[20px] overflow-hidden overflow-y-auto h-[calc(100vh-280px)]">
 		<div v-if="showList === 'horizontal'" class="flex flex-wrap">
-			<div
-				v-for="item in fileList"
-				:key="item.id"
-				class="group flex flex-col items-center w-[100px] min-h-[120px] x] mr-[20px] mb-[20px] cursor-pointer"
-				@dblclick="handleDblClick(item)">
-				<img
-					:src="setFilePicture(item.postfix)"
-					alt=""
-					class="h-[60px] !important w-[60px] !important mb-[5px]" />
+			<template v-if="fileList.length">
+				<div
+					v-for="item in fileList"
+					:key="item.fileId"
+					class="group flex flex-col items-center w-[100px] min-h-[120px] x] mr-[20px] mb-[20px] cursor-pointer"
+					@dblclick="handleDblClick(item)">
+					<img
+						:src="setFilePicture(item)"
+						alt=""
+						class="h-[60px] !important w-[60px] !important mb-[5px]" />
 
-				<template v-if="item.id">
-					<div class="text-[14px] break-all">{{ item.name }}</div>
+					<template v-if="item.fileId">
+						<div class="text-[14px] break-all">{{ item.fileName }}</div>
 
-					<div class="opacity-0 group-hover:opacity-100">
-						<el-button
-							size="small"
-							type="plain"
-							link
-							@click="downloadFile(item)">
-							下载
-						</el-button>
-						<el-button
-							size="small"
-							type="danger"
-							link
-							@click="deleteFile(item)">
-							删除
-						</el-button>
-					</div>
-				</template>
+						<div class="opacity-0 group-hover:opacity-100">
+							<el-button
+								:loading="btnLoading"
+								size="small"
+								type="plain"
+								link
+								@click="downloadFile(item)">
+								下载
+							</el-button>
+							<el-button
+								:loading="btnLoading"
+								size="small"
+								type="danger"
+								link
+								@click="deleteFile(item)">
+								删除
+							</el-button>
+						</div>
+					</template>
 
-				<template v-else>
-					<div class="text-[14px]">
-						<el-input v-model="folderName" size="small" placeholder="" />
-					</div>
+					<template v-else>
+						<div class="text-[14px]">
+							<el-input v-model="folderName" size="small" placeholder="" />
+						</div>
 
-					<div>
-						<el-button size="small" type="primary" link @click="createFolder">
-							创建
-						</el-button>
-						<el-button
-							size="small"
-							type="plain"
-							link
-							@click="cancleCreateFolder">
-							取消
-						</el-button>
-					</div>
-				</template>
-			</div>
+						<div>
+							<el-button
+								:loading="btnLoading"
+								size="small"
+								type="primary"
+								link
+								@click="createFolder">
+								创建
+							</el-button>
+							<el-button
+								:loading="btnLoading"
+								size="small"
+								type="plain"
+								link
+								@click="cancleCreateFolder">
+								取消
+							</el-button>
+						</div>
+					</template>
+				</div>
+			</template>
+
+			<template v-else>
+				<el-empty class="m-[auto]" description="暂无文件"></el-empty>
+			</template>
 		</div>
 
 		<div v-else>
 			<el-table :data="fileList" style="width: 100%" row-class-name="group">
-				<el-table-column prop="name" label="名称">
+				<el-table-column prop="fileName" label="名称">
 					<template #default="{ row }">
 						<div
 							class="flex items-center cursor-pointer"
 							@dblclick.stop="handleDblClick(row)">
 							<img
-								:src="setFilePicture(row.postfix)"
+								:src="setFilePicture(row)"
 								alt=""
 								class="h-[40px] !important w-[40px] !important mr-[5px]" />
 
 							<div
-								v-if="row.id"
+								v-if="row.fileId"
 								class="text-[14px] whitespace-nowrap overflow-hidden text-ellipsis">
-								{{ row.name }}
+								{{ row.fileName }}
 							</div>
 
 							<div v-else class="flex items-center">
@@ -117,6 +140,7 @@
 
 								<div>
 									<el-button
+										:loading="btnLoading"
 										size="small"
 										type="primary"
 										link
@@ -124,6 +148,7 @@
 										创建
 									</el-button>
 									<el-button
+										:loading="btnLoading"
 										size="small"
 										type="plain"
 										link
@@ -135,12 +160,14 @@
 						</div>
 					</template>
 				</el-table-column>
-				<el-table-column prop="time" label="上传时间" width="200" />
-				<el-table-column prop="creator" label="上传者" width="200" />
+				<el-table-column prop="size" label="大小" width="100" />
+				<el-table-column prop="uploadTime" label="上传时间" width="200" />
+				<el-table-column prop="uploaderName" label="上传者" width="200" />
 				<el-table-column width="120">
 					<template #default="{ row }">
-						<div class="hidden group-hover:block" v-if="row.id">
+						<div class="hidden group-hover:block" v-if="row.fileId">
 							<el-button
+								:loading="btnLoading"
 								size="small"
 								type="plain"
 								link
@@ -148,6 +175,7 @@
 								下载
 							</el-button>
 							<el-button
+								:loading="btnLoading"
 								size="small"
 								type="danger"
 								link
@@ -170,9 +198,16 @@ import pptx from '@/assets/images/pptx.svg'
 import zip from '@/assets/images/zip.svg'
 import folder from '@/assets/images/folder.png'
 
-import { isEmpty } from 'lodash-es'
+import { isEmpty, cloneDeep } from 'lodash-es'
 import { ElMessageBox } from 'element-plus'
-import { useUpload } from '@/hooks'
+import { useUpload, useAuth } from '@/hooks'
+import {
+	getFileEntriesListApi,
+	createFileEntryApi,
+	deleteFileEntryApi,
+	downloadFileApi,
+	downloadFolderApi,
+} from '@/api/modules/files.js'
 
 const {
 	acceptImgList,
@@ -186,6 +221,8 @@ const {
 	beforeUpload,
 } = useUpload()
 
+const { $teamId, $projectId, $getUserNickName, $userInfo } = useAuth()
+
 // 展示方式
 const showList = ref('vertical')
 
@@ -197,154 +234,11 @@ const changeList = (type) => {
 	}
 }
 
-/**
- * 初始化文件列表
- */
-const initFileList = ref([
-	{
-		id: 1,
-		pid: 0,
-		type: 'file',
-		name: '文件1文件1文件1文件1文件1文件1',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'docx',
-		creator: 'lzw',
-	},
-	{
-		id: 2,
-		pid: 0,
-		type: 'file',
-		name: '文件1',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'pdf',
-		creator: 'lzw',
-	},
-	{
-		id: 3,
-		pid: 0,
-		type: 'file',
-		name: '文件1',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'xlsx',
-		creator: 'lzw',
-	},
-	{
-		id: 4,
-		pid: 0,
-		type: 'file',
-		name: '文件1',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'zip',
-		creator: 'lzw',
-	},
-	{
-		id: 5,
-		pid: 0,
-		type: 'folder',
-		name: '文件夹文件夹文件夹文件夹文件夹文件夹文件夹',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'folder',
-		creator: 'lzw',
-	},
-	{
-		id: 6,
-		pid: 5,
-		type: 'file',
-		name: '文件1',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'docx',
-		creator: 'lzw',
-	},
-	{
-		id: 5,
-		pid: 0,
-		type: 'folder',
-		name: '文件夹',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'folder',
-		creator: 'lzw',
-	},
-	{
-		id: 5,
-		pid: 0,
-		type: 'folder',
-		name: '文件夹',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'folder',
-		creator: 'lzw',
-	},
-	{
-		id: 5,
-		pid: 0,
-		type: 'folder',
-		name: '文件夹',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'folder',
-		creator: 'lzw',
-	},
-	{
-		id: 5,
-		pid: 0,
-		type: 'folder',
-		name: '文件夹',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'folder',
-		creator: 'lzw',
-	},
-	{
-		id: 5,
-		pid: 0,
-		type: 'folder',
-		name: '文件夹',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'folder',
-		creator: 'lzw',
-	},
-	{
-		id: 5,
-		pid: 0,
-		type: 'folder',
-		name: '文件夹',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'folder',
-		creator: 'lzw',
-	},
-	{
-		id: 5,
-		pid: 0,
-		type: 'folder',
-		name: '文件夹',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'folder',
-		creator: 'lzw',
-	},
-	{
-		id: 5,
-		pid: 0,
-		type: 'folder',
-		name: '文件夹',
-		size: '10M',
-		time: '2022-01-01',
-		postfix: 'folder',
-		creator: 'lzw',
-	},
-])
+// 按钮加载状态
+const btnLoading = ref(false)
 
 // 文件夹深度
-const deepList = ref([{ name: '文件', id: 0 }])
+const deepList = ref([{ fileName: '文件', fileId: 0 }])
 
 // 文件列表
 const fileList = ref([])
@@ -352,8 +246,9 @@ const fileList = ref([])
 /**
  * 设置文件图标
  */
-const setFilePicture = (postfix) => {
-	const type = '.' + postfix
+const setFilePicture = (row) => {
+	const { extension, path } = row
+	const type = '.' + extension
 	if (acceptWordList.includes(type)) {
 		return docx
 	} else if (acceptPdfList.includes(type)) {
@@ -365,8 +260,8 @@ const setFilePicture = (postfix) => {
 	} else if (acceptPPTList.includes(type)) {
 		return pptx
 	} else if (acceptImgList.includes(type)) {
-		return type
-	} else if (postfix === 'folder') {
+		return path
+	} else if (extension === 'folder') {
 		return folder
 	} else {
 		return docx
@@ -377,9 +272,9 @@ const setFilePicture = (postfix) => {
  * 双击事件
  */
 const handleDblClick = (row) => {
-	if (row.id === null) return
-	if (row.type === 'folder') {
-		deepList.value.push({ name: row.name, id: row.id })
+	if (row.fileId === null) return
+	if (row.fileType === 1) {
+		deepList.value.push({ fileName: row.fileName, fileId: row.fileId })
 		getFileList()
 	}
 }
@@ -396,10 +291,32 @@ const handleBack = () => {
 }
 
 /**
+ * 上传文件 的其他参数
+ */
+const getUploadData = () => {
+	return {
+		teamId: $teamId.value,
+		projectId: $projectId.value,
+		parentId: deepList.value[deepList.value.length - 1].fileId,
+	}
+}
+
+/**
  * 上传文件
  */
-const uploadSuccess = (response, file, fileList) => {
-	// TODO: 上传成功处理
+const uploadSuccess = async (res, file, fileList) => {
+	if (res.data.code === -1) {
+		ElMessage.error(res.data.msg)
+	} else {
+		await getFileList()
+	}
+}
+
+/**
+ * 上传失败
+ */
+const uploadError = (res) => {
+	ElMessage.error('上传失败')
 }
 
 // 是否新建文件夹
@@ -410,16 +327,17 @@ const visibleCreateFolder = ref(false)
  */
 const changeFolder = () => {
 	visibleCreateFolder.value = true
-	fileList.value.unshift({
-		id: null,
-		pid: deepList.value[deepList.value.length - 1].id,
-		type: 'folder',
-		name: '',
-		size: '',
-		time: '',
-		postfix: 'folder',
-		creator: '',
-	})
+	const newFolder = {
+		teamId: $teamId.value,
+		projectId: $projectId.value,
+		fileName: '',
+		fileType: 1,
+		parentId: deepList.value[deepList.value.length - 1].fileId,
+		size: 0,
+		path: '',
+		extension: 'folder',
+	}
+	fileList.value.unshift(newFolder)
 }
 
 // 新建的文件夹名称
@@ -428,21 +346,23 @@ const folderName = ref('')
 /**
  * 创建文件夹
  */
-const createFolder = () => {
+const createFolder = async () => {
 	try {
+		btnLoading.value = true
 		if (unref(folderName).trim() === '') {
 			ElMessage.error('文件夹名称不能为空')
 			return
 		}
-		// TODO: 创建文件夹
-		fileList.value[0].id = new Date().getTime()
-		fileList.value[0].name = folderName.value
-		fileList.value[0].time = new Date().toLocaleString()
-		fileList.value[0].creator = 'lzw'
+		fileList.value[0].fileName = folderName.value
+		const params = cloneDeep(fileList.value[0])
+		await createFileEntryApi(params)
+		await getFileList()
 		visibleCreateFolder.value = false
 		folderName.value = ''
 	} catch (err) {
 		return Promise.reject(err)
+	} finally {
+		btnLoading.value = false
 	}
 }
 
@@ -458,8 +378,23 @@ const cancleCreateFolder = () => {
 /**
  * 下载文件
  */
-const downloadFile = (row) => {
-	// TODO: 下载请求
+const downloadFile = async (row) => {
+	try {
+		btnLoading.value = true
+		// 下载文件
+		if (row.fileType === 0) {
+			await downloadFileApi({ fileId: row.fileId })
+		}
+		// 下载压缩包
+		else {
+			const res = await downloadFolderApi({ fileId: row.fileId })
+			console.log(res)
+		}
+	} catch (err) {
+		return Promise.reject(err)
+	} finally {
+		btnLoading.value = false
+	}
 }
 
 /**
@@ -467,16 +402,19 @@ const downloadFile = (row) => {
  */
 const deleteFile = async (row) => {
 	try {
-		const tips = row.type === 'folder' ? `${row.name}和里面的文件` : row.name
+		const tips =
+			row.fileType === 1 ? `${row.fileName}和里面的文件` : row.fileName
 		await ElMessageBox.confirm(`请确认是否删除${tips}`, '提示', {
 			confirmButtonText: '确定',
 			type: 'warning',
 			closeOnClickModal: false,
 			closeOnPressEscape: false,
 		})
-		// TODO: 删除请求
+		const params = {
+			fileId: row.fileId,
+		}
+		await deleteFileEntryApi(params)
 		getFileList()
-		console.log(row)
 	} catch (err) {
 		return Promise.reject(err)
 	}
@@ -488,13 +426,32 @@ const pageLoading = ref(false)
 /**
  * 获取文件列表
  */
-const getFileList = () => {
+const getFileList = async () => {
 	try {
 		pageLoading.value = true
-		// TODO: 处理文件列表
-		fileList.value = initFileList.value.filter(
-			(item) => item.pid === deepList.value[deepList.value.length - 1].id
-		)
+		const params = {
+			parentId: unref(deepList).at(-1).fileId,
+			projectId: $projectId.value,
+			teamId: $teamId.value,
+		}
+		const res = await getFileEntriesListApi(params)
+		fileList.value = res.data.map((item) => {
+			item.uploaderName = $getUserNickName(item.uploader)
+			if (item.size) {
+				if (item.size < 1024) {
+					item.size = item.size + 'B'
+				} else if (item.size < 1024 * 1024) {
+					item.size = (item.size / 1024).toFixed(2) + 'KB'
+				} else if (item.size < 1024 * 1024 * 1024) {
+					item.size = (item.size / 1024 / 1024).toFixed(2) + 'MB'
+				} else {
+					item.size = (item.size / 1024 / 1024 / 1024).toFixed(2) + 'GB'
+				}
+			} else {
+				item.size = '--'
+			}
+			return item
+		})
 	} catch (err) {
 		return Promise.reject(err)
 	} finally {

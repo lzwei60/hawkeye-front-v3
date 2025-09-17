@@ -43,3 +43,12 @@ export const updatePasswordApi = async (params) => {
 export const updateBaseInfoApi = async (params) => {
 	return request.post('/updateBaseInfo', params)
 }
+
+/**
+ * 根据用户id获取用户信息
+ * @param params
+ * @returns
+ */
+export const getUserInfoByIdApi = async (params) => {
+	return request.post('/getUserInfoById', params)
+}

@@ -2,12 +2,6 @@
 	<div class="m-[20px]">
 		<div class="flex items-center justify-between">
 			<div class="text-[20px] font-bold">个人设置</div>
-
-			<div class="flex items-center">
-				<el-button type="danger" link size="small" @click="quitTeam">
-					退出团队
-				</el-button>
-			</div>
 		</div>
 
 		<div class="mt-[20px] flex items-center">
@@ -133,26 +127,6 @@ const userInfo = ref({})
 // 页面加载状态
 const loading = ref(false)
 
-/**
- * 退出团队
- */
-const quitTeam = async () => {
-	try {
-		await ElMessageBox.confirm('确定要退出团队吗？', '提示', {
-			confirmButtonText: '确定',
-			cancelButtonText: '取消',
-			type: 'warning',
-		})
-
-		// 获取当前用户所在团队
-		// TODO: 接口请求
-		// 判断用户是否有其他团队
-		// 如果有，则展示下一个团队，否则跳转到加入团队界面
-	} catch (err) {
-		return Promise.reject(err)
-	}
-}
-
 const uploadHeaders = () => {
 	return {
 		Authorization: `Bearer ${$userInfo.value.token}`,
@@ -251,7 +225,7 @@ const save = async () => {
 const getUserInfo = async () => {
 	try {
 		loading.value = true
-		userInfo.value = $userInfo.value
+		userInfo.value = cloneDeep($userInfo.value)
 	} catch (err) {
 		return Promise.reject(err)
 	} finally {

@@ -1,7 +1,8 @@
 import { ElMessage } from 'element-plus'
+import { useAuth } from '@/hooks'
 
-// 通用上传文件大小限制 10M
-export const SYS_UPLOAD_MAX_SIZE = 1024
+// 通用上传文件大小限制 500M
+export const SYS_UPLOAD_MAX_SIZE = 500
 
 export const useUpload = () => {
 	const acceptImgList = ['.png', '.jpg', '.jpeg']
@@ -19,9 +20,9 @@ export const useUpload = () => {
 		...acceptZipList,
 	]
 
-	const beforeUpload = (file, fileType) => {
+	const beforeUpload = (file) => {
 		const fileSuffix = file.name.split('.').pop().toLocaleLowerCase()
-		const isType = fileType.includes(`.${fileSuffix}`)
+		const isType = acceptList.includes(`.${fileSuffix}`)
 		const isLimit10M = file.size / 1024 / 1024 < SYS_UPLOAD_MAX_SIZE
 		if (!isType) {
 			ElMessage.error(
@@ -35,6 +36,16 @@ export const useUpload = () => {
 		return isType && isLimit10M
 	}
 
+	/**
+	 * 请求头
+	 */
+	const uploadHeaders = () => {
+		const { $userInfo } = useAuth()
+		return {
+			Authorization: `Bearer ${$userInfo.value.token}`,
+		}
+	}
+
 	return {
 		acceptImgList,
 		acceptWordList,
@@ -45,5 +56,6 @@ export const useUpload = () => {
 		acceptList,
 
 		beforeUpload,
+		uploadHeaders,
 	}
 }

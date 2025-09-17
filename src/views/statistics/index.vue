@@ -4,6 +4,8 @@
 		<PopoverSelect
 			v-model="projectId"
 			:options="projectList"
+			labelKey="projectName"
+			valueKey="projectId"
 			@change="changeProject">
 			<template #reference>
 				<div class="text-[14px] w-[200px] cursor-pointer hover:opacity-80">
@@ -14,6 +16,7 @@
 	</div>
 
 	<div class="flex items-center justify-center">
+		<!-- 任务数据 -->
 		<div
 			v-loading="taskDataLoading"
 			class="rounded-lg border flex-1 mr-[12px] p-[12px]">
@@ -49,6 +52,7 @@
 			</el-row>
 		</div>
 
+		<!-- 重点关注 -->
 		<div
 			v-loading="emphasisLoading"
 			class="rounded-lg border w-[420px] p-[12px]">
@@ -83,7 +87,7 @@
 				</div>
 			</div>
 
-			<el-scrollbar height="125px">
+			<el-scrollbar ref="scrollRef" height="125px" @scroll="handleScroll()">
 				<div
 					v-for="item in emphasisTaskList"
 					:key="item.taskId"
@@ -102,8 +106,19 @@
 					</div>
 
 					<div class="text-[12px] text-[#999999]">
-						执行人：{{ item.executorName }}
+						负责人：{{ item.executorName }}
 					</div>
+				</div>
+
+				<div
+					v-if="scrollLoading"
+					class="flex items-center justify-center my-[16px] text-[#999999] text-[12px]">
+					<span> 加载中... </span>
+				</div>
+				<div
+					v-else-if="scrollNoMore"
+					class="flex items-center justify-center my-[16px] text-[#999999] text-[12px]">
+					<span>暂无更多数据</span>
 				</div>
 			</el-scrollbar>
 		</div>
@@ -111,10 +126,9 @@
 
 	<div class="mt-[12px] flex items-center justify-center h-[calc(100%-280px)]">
 		<!-- 各/筛选项目名称）项目进展 -->
-
 		<div class="flex-1 mr-[12px] border rounded-lg p-[12px] h-[100%] w-[100%]">
 			<div class="text-[18px] font-bold">
-				{{ projectId === -1 ? '各项目' : selectLabel }}进展
+				{{ projectId === '' ? '各项目' : selectLabel }}进展
 			</div>
 
 			<barCharts
@@ -128,13 +142,13 @@
 		<!-- 过期任务（所有项目/项目成员）分布 -->
 		<div class="flex-1 border rounded-lg p-[12px] h-[100%] w-[100%]">
 			<div class="text-[18px] font-bold">
-				过期任务{{ projectId === -1 ? '所有项目' : selectLabel + '成员' }}分布
+				过期任务{{ projectId === '' ? '所有项目' : selectLabel + '成员' }}分布
 			</div>
 
 			<barCharts
 				class="h-[calc(100%-20px)]"
 				v-loading="overdueLoading"
-				:visible-empty="progressVisibleChart"
+				:visible-empty="overdueVisibleChart"
 				:dataZoom="false"
 				v-bind="overdueChartConfig"
 				:toolbox="false" />
@@ -144,72 +158,42 @@
 
 <script setup>
 import { cloneDeep, divide, multiply, round } from 'lodash-es'
-import { useTask } from '@/hooks'
+import dayjs from 'dayjs'
+import { useTask, useAuth } from '@/hooks'
 import barCharts from '@/components/echart/barCharts.vue'
 import PopoverSelect from '@/components/popoverSelect/index.vue'
 import {
-	getProjectTotalDataApi,
-	getProjectEmphasisDataApi,
-	getProjectProgressApi,
-	getProjectOverdueApi,
-} from '@/api/modules/statistics'
+	getTaskStatisticsApi,
+	getTaskStatusCountApi,
+	getTaskListByStatusApi,
+	getOverdueUnfinishedTasksApi,
+	getProjectTaskStatsApi,
+} from '@/api/modules/statistics.js'
 
 const { priorityOptions } = useTask()
 
-// 项目筛选
-const projectId = ref(-1)
-
-// 项目筛选列表
-const projectList = ref([
-	{ label: '团队', value: -1 },
-	{ label: '项目1', value: 1 },
-	{ label: '项目2', value: 2 },
-	{ label: '项目3', value: 3 },
-	{ label: '项目4', value: 4 },
-	{ label: '项目5', value: 5 },
-	{ label: '项目6', value: 6 },
-	{ label: '项目7', value: 7 },
-	{ label: '项目8', value: 8 },
-	{ label: '项目9', value: 9 },
-	{ label: '项目10', value: 10 },
-])
-
-// 筛选项目 name
-const selectLabel = computed(() => {
-	return projectList.value.find((item) => item.value === unref(projectId))
-		?.label
-})
-
-/**
- * 监听项目
- */
-const changeProject = (val) => {
-	getProjectTotalData()
-	getProjectEmphasisData()
-	getProjectProgressData()
-	getProjectOverdueData()
-}
+const { $teamId, $projectList, $getUserNickName } = useAuth()
 
 /********** 任务数据 ************/
 // 任务数据 加载状态
 const taskDataLoading = ref(false)
 // 当前日期选日期
-const dateActive = ref('month')
+const dateActive = ref('day')
 // 筛选日期
 const filterDateList = ref([
 	{ label: '今日', value: 'day' },
-	{ label: '本周', value: 'week' },
+	{ label: '本周', value: 'isoWeek' },
 	{ label: '本月', value: 'month' },
 	{ label: '本年', value: 'year' },
 ])
 // 任务数据
 const taskDataRecoed = ref([
-	{ value: 'all', label: '任务总数', count: 0 },
-	{ value: 'finish', label: '已完成任务', count: 0 },
-	{ value: 'rate', label: '准时完成率', count: 0 },
-	{ value: 'total', label: '总人数', count: 0 },
-	{ value: 'avg', label: '平均任务量', count: 0 },
-	{ value: 'none', label: '未安排任务', count: 0 },
+	{ value: 'totalTasks', label: '任务总数', count: 0 },
+	{ value: 'completedTasks', label: '已完成任务', count: 0 },
+	{ value: 'onTimeRate', label: '准时完成率', count: 0 },
+	{ value: 'totalUsers', label: '总人数', count: 0 },
+	{ value: 'avgTasksPerUser', label: '平均任务量', count: 0 },
+	{ value: 'unassignedTasks', label: '未安排任务', count: 0 },
 ])
 /**
  * 获取任务数据
@@ -217,7 +201,9 @@ const taskDataRecoed = ref([
 const getProjectTotalData = async () => {
 	try {
 		taskDataLoading.value = true
-		const { data: res } = await getProjectTotalDataApi()
+		const params = handleTotalParams()
+
+		const { data: res } = await getTaskStatisticsApi(params)
 		taskDataRecoed.value.forEach((item) => {
 			item.count = res[item.value]
 		})
@@ -226,6 +212,23 @@ const getProjectTotalData = async () => {
 	} finally {
 		taskDataLoading.value = false
 	}
+}
+/**
+ * 处理任务数据参数
+ */
+const handleTotalParams = () => {
+	const format = 'YYYY-MM-DD HH:mm:ss'
+
+	const params = {
+		teamId: unref($teamId),
+		startTime: dayjs().startOf(unref(dateActive)).format(format), // 开始
+		endTime: dayjs().endOf(unref(dateActive)).format(format), // 结束
+	}
+	if (unref(projectId)) {
+		params.projectId = unref(projectId)
+	}
+
+	return params
 }
 /**
  * 监听日期
@@ -240,26 +243,26 @@ const changeDate = (val) => {
 // 重点关注 加载状态
 const emphasisLoading = ref(false)
 // 重点关注 当前任务状态
-const emphasisTaskActive = ref('overdue')
+const emphasisTaskActive = ref('expiredCount')
 // 重点关注 任务状态筛选
 const emphasisTaskStutas = ref([
 	{
 		label: '过期任务',
-		value: 'overdue',
+		value: 'expiredCount',
 		count: 12,
 		color: '#000000',
 		bgColor: '#F7F7F7',
 	},
 	{
 		label: '未完成任务',
-		value: 'unfinish',
+		value: 'unfinishedCount',
 		count: 12,
 		color: '#F9AE42',
 		bgColor: '#FDF7ED',
 	},
 	{
 		label: '最高级任务',
-		value: 'important',
+		value: 'priorityICount',
 		count: 12,
 		color: '#F56B6C',
 		bgColor: '#FCF1F0',
@@ -267,22 +270,72 @@ const emphasisTaskStutas = ref([
 ])
 // 重点关注 任务列表
 const emphasisTaskList = ref([])
+// 当前页数
+const page = ref(1)
+// 滚动加载 dom
+const scrollRef = ref()
+// 滚动加载
+const scrollLoading = ref(false)
+// 是否还有更多
+const scrollNoMore = ref(false)
 /**
  * 获取重点关注数据
  */
 const getProjectEmphasisData = async () => {
 	try {
 		emphasisLoading.value = true
-		const { data: res } = await getProjectEmphasisDataApi()
-		const { filter, record } = res
+		const params = {
+			teamId: unref($teamId),
+		}
+		if (unref(projectId)) {
+			params.projectId = unref(projectId)
+		}
+		const { data: res } = await getTaskStatusCountApi(params)
 		emphasisTaskStutas.value.forEach((item) => {
-			item.count = filter[item.value]
+			item.count = res[item.value]
 		})
-		emphasisTaskList.value = record
 	} catch (err) {
 		return Promise.reject(err)
 	} finally {
 		emphasisLoading.value = false
+	}
+}
+/**
+ * 获取重点关注单个列表数据
+ */
+const getProjectEmphasisListData = async () => {
+	try {
+		scrollLoading.value = true
+		if (unref(scrollNoMore)) return
+
+		const params = {
+			teamId: unref($teamId),
+			page: unref(page),
+			status: unref(emphasisTaskActive),
+		}
+		if (unref(projectId)) {
+			params.projectId = unref(projectId)
+		}
+		const { data: res } = await getTaskListByStatusApi(params)
+		const data = res.map((item) => {
+			item.executorName = $getUserNickName(item.principal) || '--'
+			return item
+		})
+		emphasisTaskList.value.push(...data)
+		const total =
+			unref(emphasisTaskStutas).find(
+				(item) => item.value === unref(emphasisTaskActive)
+			)?.count || 0
+
+		if (unref(emphasisTaskList).length >= total) {
+			scrollNoMore.value = true
+		} else {
+			page.value++
+		}
+	} catch (err) {
+		return Promise.reject(err)
+	} finally {
+		scrollLoading.value = false
 	}
 }
 /**
@@ -296,7 +349,33 @@ const getPriorityData = (val, field) => {
  */
 const changeTaskStutas = (val) => {
 	emphasisTaskActive.value = val
-	getProjectEmphasisData()
+	handleEmphasisTaskData()
+	getProjectEmphasisListData()
+}
+/**
+ * 监听滚动
+ */
+const handleScroll = () => {
+	if (!scrollRef.value) return
+
+	const wrap = scrollRef.value.$el?.querySelector('.el-scrollbar__wrap')
+	if (!wrap) return
+
+	if (scrollLoading.value) return
+
+	const threshold = 5
+	if (wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - threshold) {
+		getProjectEmphasisListData()
+	}
+}
+
+/**
+ * 处理重点关注任务数据
+ */
+const handleEmphasisTaskData = () => {
+	page.value = 1
+	emphasisTaskList.value = []
+	scrollNoMore.value = false
 }
 
 /********** 项目进展 ************/
@@ -371,7 +450,7 @@ const setProgressChartConfig = (legendData, dataset) => {
 				z: index + 1, // 层级
 			}
 			if (index === 0) {
-				itemObj.barGap = '-100%'
+				// itemObj.barGap = '-100%'
 				itemObj.itemStyle = {
 					color: '#7aade1',
 				}
@@ -395,7 +474,14 @@ const setProgressChartConfig = (legendData, dataset) => {
 const getProjectProgressData = async () => {
 	try {
 		progressLoading.value = true
-		const { data: res } = await getProjectProgressApi()
+		const params = {
+			teamId: unref($teamId),
+		}
+		if (unref(projectId)) {
+			params.projectId = unref(projectId)
+		}
+		const { data: res } = await getProjectTaskStatsApi(params)
+		console.log(res)
 		if (res && res.length > 0) {
 			nextTick(() => {
 				progressList.value = res
@@ -421,7 +507,7 @@ const overdueVisibleChart = ref(false)
 const overdueList = ref([])
 // 逾期分布图例
 const overdueLegend = {
-	taskOverdue: '逾期任务',
+	overdueUnfinishedCount: '逾期任务',
 }
 // 数据集-逾期分布
 const overdueDataSet = ref({
@@ -455,7 +541,7 @@ const setOverdueChartConfig = (legendData, dataset) => {
 				},
 			},
 			encode: {
-				value: 'taskOverdue', // 数值字段
+				value: 'overdueUnfinishedCount', // 数值字段
 				itemName: 'title', // 名称字段（用于 tooltip 和 label）
 			},
 		}
@@ -473,10 +559,17 @@ const setOverdueChartConfig = (legendData, dataset) => {
 const getProjectOverdueData = async () => {
 	try {
 		overdueLoading.value = true
-		const { data: res } = await getProjectOverdueApi()
+		const params = {
+			teamId: unref($teamId),
+		}
+		if (unref(projectId)) {
+			params.projectId = unref(projectId)
+		}
+		const { data: res } = await getOverdueUnfinishedTasksApi(params)
+
 		if (res && res.length > 0) {
 			nextTick(() => {
-				overdueList.value = res
+				overdueList.value = res || []
 				makeUpEchartData('overdue')
 			})
 			overdueVisibleChart.value = false
@@ -488,6 +581,29 @@ const getProjectOverdueData = async () => {
 	} finally {
 		overdueLoading.value = false
 	}
+}
+
+/********** 其它 ************/
+
+// 项目筛选
+const projectId = ref('')
+
+// 项目筛选列表
+const projectList = computed(() => {
+	return [{ projectName: '所有项目', projectId: '' }, ...unref($projectList)]
+})
+
+// 筛选项目 name
+const selectLabel = computed(() => {
+	return projectList.value.find((item) => item.projectId === unref(projectId))
+		?.projectName
+})
+
+/**
+ * 监听项目
+ */
+const changeProject = (val) => {
+	init()
 }
 
 /**
@@ -509,7 +625,12 @@ const makeUpEchartData = (type) => {
 	chartDataList.forEach((item) => {
 		const newItem = cloneDeep(item)
 		const dataObj = {
-			title: unref(projectId) === -1 ? item.projectName : item.userName,
+			title:
+				type === 'overdue'
+					? item.userName
+					: unref(projectId) === ''
+						? item.projectName
+						: item.userName,
 		}
 
 		Object.keys(newItem).forEach((key) => {
@@ -535,15 +656,17 @@ const makeUpEchartData = (type) => {
 /**
  * 初始化
  */
-const init = () => {
+const init = async () => {
 	// 获取项目任务数据
 	getProjectTotalData()
-	// 获取项目重点关注数据
-	getProjectEmphasisData()
 	// 获取进展
 	getProjectProgressData()
 	// 获取逾期分布
 	getProjectOverdueData()
+	// 获取项目重点关注数据
+	await getProjectEmphasisData()
+	handleEmphasisTaskData()
+	getProjectEmphasisListData()
 }
 
 init()

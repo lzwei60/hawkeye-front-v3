@@ -3,9 +3,9 @@
 		<div class="menu-box flex justify-between items-center h-[60px] bg-white">
 			<div class="top-title border-r h-[60px] leading-[60px] pl-4 pr-4">
 				<PopoverSelect
-					v-model="teamId"
+					v-model="$teamId"
 					:search="false"
-					:options="teamList"
+					:options="$teamList"
 					@change="changeTeam">
 					<template #reference>
 						<div class="w-[220px] truncate cursor-pointer">{{ teamLabel }}</div>
@@ -44,7 +44,11 @@
 
 			<div class="top-base flex items-center justify-center">
 				<div class="base-notice mr-[20px] cursor-pointer">
-					<el-popover placement="bottom" :width="300" trigger="click">
+					<el-popover
+						ref="popoverNoticeRef"
+						placement="bottom"
+						:width="300"
+						trigger="click">
 						<template #reference>
 							<el-badge
 								:value="noticeList.length"
@@ -60,7 +64,7 @@
 								class="notice-top flex justify-between items-center pb-[10px] border-b">
 								<div class="top-title text-[14px]">
 									通知
-									<span>（5）</span>
+									<span>（{{ noticeTotal }}）</span>
 								</div>
 
 								<el-button
@@ -73,33 +77,40 @@
 								</el-button>
 							</div>
 
-							<div class="notice-content pt-[10px] pb-[10px]">
+							<div
+								class="notice-content pt-[10px] pb-[10px] h-[200px] overflow-auto">
 								<div v-if="noticeList.length" class="content-list">
 									<div
 										class="flex items-center justify-start mb-[15px] text-[12px] last:mb-0"
 										v-for="(item, index) in noticeList"
-										:key="index">
+										:key="item.noticeId">
 										<div
 											class="item-avatar flex items-center before:content-[''] before:w-[5px] before:h-[5px] before:bg-[#ff0000] before:rounded-full before:mr-[10px]">
-											<el-avatar :size="32" :src="item.headImg" />
+											<el-avatar
+												:size="32"
+												:src="
+													findObjectLabel(
+														item.sendUserId,
+														'userId',
+														$teamUserList
+													)?.userHead || ''
+												" />
 										</div>
 
 										<div class="item-content ml-[10px] w-[100%]">
 											<div class="content-title">
-												<span class="text-[#1677ff]">{{ item.operator }}</span>
+												<span class="text-[#1677ff]">{{
+													$getUserNickName(item.sendUserId)
+												}}</span>
 
-												<span>给你</span>
-
-												<span>{{ item.operateMatters }}</span>
+												<span>{{ item.noticationContent }}</span>
 											</div>
 
 											<div
 												class="content-desc flex items-center justify-between">
-												<div class="desc-title w-[135px] truncate">
-													{{ item.operateContent }}
+												<div class="desc-time">
+													{{ item.noticationTime.split(' ')[1] }}
 												</div>
-
-												<div class="desc-time">{{ item.operateTime }}</div>
 											</div>
 										</div>
 									</div>
@@ -156,26 +167,34 @@
 
 <script setup>
 import { useRouter, useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useAuth } from '@/hooks'
 import { useAuthStoreWithOut } from '@/store/modules/auth'
 import PopoverSelect from '@/components/popoverSelect/index.vue'
+import {
+	getSelectNoticeApi,
+	markAllNoticesAsReadApi,
+} from '@/api/modules/notice.js'
 
 const route = useRoute()
 
 const router = useRouter()
 
-const { $changeTeamId, $userInfo, $teamList, $teamId } = useAuth()
+const {
+	$changeTeamId,
+	$userInfo,
+	$teamList,
+	$teamId,
+	$teamUserList,
+	$getUserNickName,
+} = useAuth()
 
 const activeIndex = ref('1')
 
 const menuList = ref([])
 
-const teamId = ref(null)
-
-const teamList = ref([])
-
 const teamLabel = computed(() => {
-	return teamList.value.find((item) => item.value === teamId.value)?.label
+	return $teamList.value.find((item) => item.value === $teamId.value)?.label
 })
 
 /**
@@ -248,32 +267,6 @@ const changeTeam = (id) => {
 	}, 0)
 }
 
-const noticeList = ref([])
-
-const loading = ref(false)
-
-/**
- * 标记已读
- */
-const clearNotice = () => {
-	try {
-		loading.value = true
-		// TODO: 请求
-		noticeList.value = []
-	} catch (err) {
-		return Promise.reject(err)
-	} finally {
-		loading.value = false
-	}
-}
-
-/**
- * 跳转到通知页面
- */
-const pageToNotice = () => {
-	router.push('/dashboard/notice')
-}
-
 /**
  * 跳转到个人中心页面
  */
@@ -290,15 +283,102 @@ const logout = () => {
 	authStore.authLoginOut(true)
 }
 
+// 动态通知加载状态
+const loading = ref(false)
+
+/**
+ * 标记已读
+ */
+const clearNotice = async () => {
+	try {
+		loading.value = true
+		await markAllNoticesAsReadApi()
+		ElMessage.success('全部标记成功')
+		await getNoticeData()
+	} catch (err) {
+		return Promise.reject(err)
+	} finally {
+		loading.value = false
+	}
+}
+
+// 通知窗口 dom
+const popoverNoticeRef = ref()
+
+/**
+ * 跳转到通知页面
+ */
+const pageToNotice = () => {
+	popoverNoticeRef.value && popoverNoticeRef.value.hide()
+	router.push('/dashboard/notice')
+}
+
+// 通知信息
+const noticeList = ref([])
+
+// 通知信息总数
+const noticeTotal = ref(0)
+
+/**
+ * 获取对象label
+ */
+const findObjectLabel = (id, key, options) => {
+	const item = options.find((item) => item[key] === id)
+	return item
+}
+
+// 通知计时器
+const noticeTimer = ref(null)
+
+/**
+ * 通知计时器函数
+ */
+const NoticeSetInterval = async () => {
+	try {
+		if (unref(noticeTimer)) return // 防止重复启动
+
+		noticeTimer.value = setInterval(async () => {
+			await getNoticeData()
+		}, 1000 * 60)
+	} catch (err) {
+		return Promise.reject(err)
+	}
+}
+
+/**
+ * 获取通知数据
+ */
+const getNoticeData = async () => {
+	try {
+		const params = {
+			page: 1,
+			limit: 20,
+			isRead: 0,
+		}
+		const { data: res } = await getSelectNoticeApi(params)
+		noticeTotal.value = res.total || 0
+		noticeList.value = res.list || []
+	} catch (err) {
+		return Promise.reject(err)
+	}
+}
+
 // 初始化
 const init = () => {
 	getMenuList()
-	teamList.value = unref($teamList)
-	teamId.value = unref($teamId)
 }
 
-onMounted(() => {
+onMounted(async () => {
 	init()
+	await getNoticeData()
+	NoticeSetInterval()
+})
+
+onBeforeUnmount(() => {
+	if (unref(noticeTimer)) {
+		clearInterval(noticeTimer.value)
+		noticeTimer.value = null
+	}
 })
 
 watch(

@@ -34,7 +34,7 @@
 								class="flex items-center cursor-pointer text-[12px] mt-[8px]"
 								@click="visiblePopover = !visiblePopover">
 								<Icon-ep-circle-check class="mr-[5px]" />
-								所有状态
+								{{ getQueryStatusName }}
 							</div>
 						</template>
 
@@ -94,10 +94,10 @@
 					:key="item.id"
 					class="px-[5px] py-[2px] rounded bg-[#d2e5ff] mb-[5px] hover:bg-[#b5d1ff] overflow-hidden group relative">
 					<div
-						class="flex items-center transform -translate-x-[16px] transition-transform duration-300 ease-in-out group-hover:translate-x-0">
+						class="flex items-center transform -translate-x-[17px] transition-transform duration-300 ease-in-out group-hover:translate-x-0">
 						<div>
 							<el-checkbox
-								v-model="item.taskStatus"
+								v-model="item.completionStatus"
 								:true-label="1"
 								:false-label="0"
 								size="small"
@@ -107,7 +107,7 @@
 						<el-avatar
 							v-if="item.principal"
 							class="ml-[5px]"
-							:src="findObjectLabel(item.principal, 'headImg')"
+							:src="findObjectLabel(item.principal, 'userHead')"
 							:size="16" />
 
 						<div class="text-[12px] ml-[5px]">
@@ -132,28 +132,39 @@
 <script setup name="CalendarList">
 import { cloneDeep, isEmpty } from 'lodash-es'
 import dayjs from 'dayjs'
-import { useTask } from '@/hooks'
+import {
+	getCalendarTaskListApi,
+	createTaskApi,
+	updateTaskApi,
+} from '@/api/modules/task.js'
+import { useTask, useAuth } from '@/hooks'
 import calendar from '@/utils/lunarDay'
 
-const { libertyDayOptions, workingDayOptions, initTableData, isExpired } =
-	useTask()
+const { isExpired } = useTask()
+
+const { $teamAllUserList, $userId, $projectId, $teamId } = useAuth()
+
+const props = defineProps({
+	projectMemberList: {
+		type: Array,
+		default: () => [],
+	},
+})
 
 const calendarRef = ref()
 
-const projectMember = ref([
-	{ userId: '-1', userName: '无负责人', headImg: '' },
-	{ userId: 'liaozhiwei', userName: '廖志伟', headImg: '' },
-])
+// 表格选择项目人员列表
+const projectMember = ref([{ userId: '', userName: '无负责人', userHead: '' }])
 
 const calendarValue = ref(new Date())
 
 /**
  * 切换日期
  */
-const selectDate = (val) => {
+const selectDate = async (val) => {
 	if (!calendarRef.value) return
 	calendarRef.value.selectDate(val)
-	queryFilter()
+	await getTaskList()
 }
 
 /**
@@ -194,21 +205,21 @@ const getHolidaysText = (date) => {
  * 判断节假日
  */
 const isWeek = (day) => {
-	return libertyDayOptions.includes(day)
+	return calendar.libertyDayOptions.includes(day)
 }
 
 /**
  * 判断补班
  */
 const isNoWeek = (day) => {
-	return workingDayOptions.includes(day)
+	return calendar.workingDayOptions.includes(day)
 }
 
 // 筛选状态
 const statusList = ref([
 	{ id: 0, name: '未完成任务' },
 	{ id: 1, name: '已完成任务' },
-	{ id: 100, name: '所有状态' },
+	{ id: '', name: '所有状态' },
 ])
 
 // 当前筛选状态
@@ -217,13 +228,18 @@ const queryStatus = ref(0)
 // 状态弹出层状态
 const visiblePopover = ref(false)
 
+const getQueryStatusName = computed(() => {
+	const item = unref(statusList).find((item) => item.id === unref(queryStatus))
+	return item ? item.name : ''
+})
+
 /**
  * 筛选状态
  */
 const changeQueryStatus = (val) => {
 	queryStatus.value = val
 	visiblePopover.value = false
-	queryFilter()
+	getTaskList()
 }
 
 // 任务列表
@@ -235,11 +251,26 @@ const loading = ref(false)
 /**
  * 获取任务列表
  */
-const getTaskList = () => {
+const getTaskList = async () => {
 	try {
 		loading.value = true
-		// TODO: 请求任务列表
-		queryFilter()
+		const time = dayjs(calendarValue.value)
+		const startOfMonth = time.startOf('month').format('YYYY-MM-DD HH:mm:ss')
+		const endOfMonth = time.endOf('month').format('YYYY-MM-DD HH:mm:ss')
+		const params = {
+			startTime: startOfMonth,
+			endTime: endOfMonth,
+			status: queryStatus.value,
+		}
+		const res = await getCalendarTaskListApi(params)
+		taskList.value = {}
+		const list = res.data
+		list.forEach((item) => {
+			const day = dayjs(item.deadlineTime).format('YYYY-MM-DD')
+			taskList.value[day] = taskList.value[day] || []
+			taskList.value[day].push(item)
+		})
+		console.log(taskList.value)
 	} catch (err) {
 		return Promise.reject(err)
 	} finally {
@@ -248,58 +279,10 @@ const getTaskList = () => {
 }
 
 /**
- * 查询
- */
-const queryFilter = () => {
-	// 深拷贝初始数据
-	let filteredData = cloneDeep(unref(initTableData))
-	// 当前日期
-	const dayjsNow = dayjs(unref(calendarValue))
-	// 获取指定日期上一个月的开始日期
-	const monthStart = dayjsNow
-		.subtract(1, 'month')
-		.startOf('month')
-		.format('YYYY-MM-DD')
-	// 获取指定日期下一个月的结束日期
-	const monthEnd = dayjsNow.add(1, 'month').endOf('month').format('YYYY-MM-DD')
-	// 过滤数据的函数
-	const filterData = (data) => {
-		return data.filter((item) => {
-			if (unref(queryStatus) === 100) return true
-
-			// 任务状态筛选
-			if (item.taskStatus !== unref(queryStatus)) {
-				return false
-			}
-			// if (isEmpty(item.deadline)) return false
-
-			const targetDate = dayjs(item.deadline)
-
-			// 判断是否在这个月内（包含起始和结束）
-			const isInMonth =
-				targetDate.isSameOrAfter(monthStart, 'day') &&
-				targetDate.isSameOrBefore(monthEnd, 'day')
-
-			return isInMonth
-		})
-	}
-
-	// 执行过滤
-	taskList.value = filterData(filteredData).reduce((acc, item) => {
-		const key = item.deadline
-		if (!acc[key]) {
-			acc[key] = []
-		}
-		acc[key].push(item)
-		return acc
-	}, {})
-}
-
-/**
  * 获取对象label
  */
 const findObjectLabel = (id, file) => {
-	const item = unref(projectMember).find((item) => item.userId === id)
+	const item = unref($teamAllUserList).find((item) => item.userId === id)
 	return item ? item[file] || '' : ''
 }
 
@@ -341,20 +324,27 @@ const confirmOrCancleTask = (day) => {
 /**
  * 确认添加任务
  */
-const confirmTask = (day) => {
+const confirmTask = async (day) => {
 	try {
 		const taskName = unref(addTaskName).trim()
 
-		// TODO: 添加任务
 		showAddTaskDayStatus.value[day] = false
 		addTaskName.value = ''
-		taskList.value[day] = taskList.value[day] || []
-		taskList.value[day].push({
+
+		const newTask = {
+			taskId: null,
 			taskName,
-			taskStatus: 0,
-			userId: '-1',
-			deadline: day,
-		})
+			projectId: unref($projectId),
+			teamId: unref($teamId),
+			priority: 2,
+			deadlineTime: day,
+			principal: '',
+		}
+		if (taskName) {
+			const res = await createTaskApi(newTask)
+			taskList.value[day] = taskList.value[day] || []
+			taskList.value[day].push(res.data)
+		}
 	} catch (err) {
 		return Promise.reject(err)
 	}
@@ -363,9 +353,30 @@ const confirmTask = (day) => {
 /**
  * 修改任务完成状态
  */
-const changeTaskStatus = (checked, row) => {
-	row.taskStatus = checked ? 1 : 0
+const changeTaskStatus = async (checked, row) => {
+	const newTask = row
+	try {
+		newTask.completionStatus = checked ? 1 : 0
+		newTask.consummator = checked ? unref($userId) : ''
+		await updateTaskApi(newTask)
+		await getTaskList()
+	} catch (err) {
+		newTask.completionStatus = !checked ? 1 : 0
+		newTask.consummator = !checked ? unref($userId) : ''
+		return Promise.reject(err)
+	}
 }
+
+watch(
+	() => props.projectMemberList,
+	(arr) => {
+		projectMember.value.push(...props.projectMemberList)
+	},
+	{
+		deep: true,
+		immediate: true,
+	}
+)
 
 /**
  * 初始化数据

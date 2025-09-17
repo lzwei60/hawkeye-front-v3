@@ -4,7 +4,7 @@
 
 		<PopoverSelect
 			v-model="queryFormModel.projectId"
-			:options="options"
+			:options="projectOptions"
 			@change="changeProject">
 			<template #reference>
 				<div class="text-[14px] w-[200px] cursor-pointer hover:opacity-80">
@@ -15,28 +15,34 @@
 
 		<PopoverSelect
 			ref="popoverUserRef"
-			v-model="queryFormModel.userId"
+			v-model="queryFormModel.operatorId"
 			value-key="userId"
 			label-key="userName"
 			:options="teamMemberList">
 			<template #reference>
 				<div class="flex items-center justify-center cursor-pointer">
-					<div v-if="!queryFormModel.userId">
+					<div v-if="!queryFormModel.operatorId">
 						<Icon-ep-userFilled class="text-[#999999] text-[20px]" />
 					</div>
 
 					<el-avatar
 						v-else
 						:src="
-							findObjectLabel(queryFormModel.userId, 'userId', teamMemberList)
-								?.headImg || ''
+							findObjectLabel(
+								queryFormModel.operatorId,
+								'userId',
+								teamMemberList
+							)?.userHead || ''
 						"
 						size="small" />
 
 					<span class="ml-[6px] text-[14px]">
 						{{
-							findObjectLabel(queryFormModel.userId, 'userId', teamMemberList)
-								?.userName || ''
+							findObjectLabel(
+								queryFormModel.operatorId,
+								'userId',
+								teamMemberList
+							)?.userName || ''
 						}}
 					</span>
 				</div>
@@ -57,7 +63,7 @@
 								v-else
 								:src="
 									findObjectLabel(item.userId, 'userId', teamMemberList)
-										?.headImg || ''
+										?.userHead || ''
 								"
 								size="small" />
 						</div>
@@ -65,7 +71,7 @@
 					</div>
 
 					<div
-						v-if="queryFormModel.userId === item.userId"
+						v-if="queryFormModel.operatorId === item.userId"
 						class="before:content-['✔'] before:text-[#51b52f]"></div>
 				</div>
 			</template>
@@ -73,75 +79,125 @@
 	</div>
 
 	<div
-		v-infinite-scroll="getLoadData"
+		v-infinite-scroll="infiniteScroll"
 		class="overflow-auto h-[calc(100%-50px)]">
-		<div v-for="item in count" :key="item" class="mb-[18px] last:mb-0">
-			<div class="px-[18px]">
-				<div class="flex items-center">
-					<div
-						class="border-[4px] rounded-[50%] w-[70px] h-[70px] flex flex-col justify-center items-center">
-						<div class="font-bold text-[146x] text-[#1677ff]">5/21</div>
-						<div class="text-[#666666] text-[14px]">周三</div>
+		<template v-if="dynamicData.length">
+			<template v-for="dynamic in dynamicData" :key="dynamic.date">
+				<div
+					v-for="(project, projectIndex) in dynamic.list"
+					:key="project.projectId"
+					class="mb-[18px] last:mb-0">
+					<div class="px-[18px]">
+						<div class="flex items-center">
+							<div
+								v-if="projectIndex === 0"
+								class="border-[4px] rounded-[50%] w-[70px] h-[70px] flex flex-col justify-center items-center">
+								<div class="font-bold text-[146x] text-[#1677ff]">
+									{{ dynamic.formatDate }}
+								</div>
+								<div class="text-[#666666] text-[14px]">
+									{{ dynamic.weekday }}
+								</div>
+							</div>
+
+							<el-divider class="flex-1" direction="horizontal" />
+
+							<div class="ml-[10px] text-[#7f7f7f] text-[18px] font-bold">
+								{{ getProjectName(project.projectId) }}
+							</div>
+						</div>
 					</div>
 
-					<el-divider class="flex-1" direction="horizontal" />
+					<div
+						v-for="item in project.list"
+						:key="item.operatorId"
+						class="flex items-center px-[80px] mb-[18px] last:mb-0">
+						<div class="text-[#7f7f7f] text-[12px] mr-[18px]">
+							{{ item.operateTime.split(' ')[1] }}
+						</div>
 
-					<div class="ml-[10px] text-[#7f7f7f] text-[18px] font-bold">鹰眼</div>
+						<el-avatar
+							class="mr-[18px]"
+							:src="
+								findObjectLabel(item.operatorId, 'userId', teamMemberList)
+									?.userHead || ''
+							"
+							:size="50" />
+
+						<div
+							class="text-[14px] font-bold mr-[18px] cursor-pointer"
+							@click="openDrawer(item.operatorId)">
+							{{ $getUserNickName(item.operatorId) }}
+						</div>
+
+						<div class="text-[14px] mr-[18px]">{{ item.operateContent }}：</div>
+
+						<div class="text-[14px]">{{ item.operateDetails }}</div>
+					</div>
 				</div>
+			</template>
+
+			<div v-if="pageLoading" class="text-[14px] text-center text-[#1677ff]">
+				加载中...
 			</div>
 
-			<div
-				v-for="list in 5"
-				:key="list"
-				class="flex items-center px-[80px] mb-[18px] last:mb-0">
-				<div class="text-[#7f7f7f] text-[12px] mr-[18px]">16:20</div>
+			<el-divider v-if="noMore">
+				<div class="text-[14px] text-center text-[#999999]">我也是有底线的</div>
+			</el-divider>
+		</template>
 
-				<el-avatar class="mr-[18px]" src="" :size="50" />
-
-				<div class="text-[14px] font-bold mr-[18px]">廖志伟</div>
-
-				<div class="text-[14px] mr-[18px]">动态描述：</div>
-
-				<div class="text-[14px]">动态名称</div>
-			</div>
-		</div>
-
-		<div v-if="pageLoading" class="text-[14px] text-center text-[#1677ff]">
-			加载中...
-		</div>
-
-		<el-divider v-if="noMore">
-			<div class="text-[14px] text-center text-[#999999]">我也是有底线的</div>
-		</el-divider>
+		<el-empty v-else description="暂无动态数据"></el-empty>
 	</div>
+
+	<el-drawer
+		v-model="drawerPropsData.visible"
+		:size="drawerPropsData.width"
+		:with-header="false">
+		<UserInfo :userId="drawerPropsData.userId" />
+	</el-drawer>
 </template>
 
 <script setup>
 import { cloneDeep } from 'lodash-es'
-import { useTeam } from '@/hooks'
+import { useTeam, useAuth } from '@/hooks'
+import {
+	getOperateLogsApi,
+	getProjectAllListApi,
+} from '@/api/modules/project.js'
 import PopoverSelect from '@/components/popoverSelect/index.vue'
+import UserInfo from '@/components/userInfo/index.vue'
+import calendar from '@/utils/lunarDay'
 
 const { initMemberList } = useTeam()
 
+const { $teamId, $teamUserList, $projectList, $getUserNickName, $userMap } =
+	useAuth()
+
 const QUERY_FROM_MODEL = {
-	projectId: 1,
-	userId: '',
+	projectId: '',
+	operatorId: '',
 	page: 1,
-	limit: 10,
+	limit: 20,
 }
 
-const options = ref([
-	{ label: '项目1', value: 1 },
-	{ label: '项目2', value: 2 },
-	{ label: '项目3', value: 3 },
-	{ label: '项目4', value: 4 },
-	{ label: '项目5', value: 5 },
-	{ label: '项目6', value: 6 },
-	{ label: '项目7', value: 7 },
-	{ label: '项目8', value: 8 },
-	{ label: '项目9', value: 9 },
-	{ label: '项目10', value: 10 },
-])
+// 项目筛选列表
+const projectOptions = computed(() => {
+	const list = unref($projectList).map((item) => {
+		return {
+			...item,
+			value: item.projectId,
+			label: item.projectName,
+		}
+	})
+	list.unshift({
+		value: '',
+		label: '全部项目',
+	})
+	return list
+})
+
+// 所有项目列表
+const projectAllList = ref([])
 
 // 筛选数据
 const queryFormModel = reactive(cloneDeep({ ...QUERY_FROM_MODEL }))
@@ -151,7 +207,7 @@ const popoverProjetRef = ref(null)
 
 // 筛选项目 name
 const selectLabel = computed(() => {
-	return options.value.find(
+	return projectOptions.value.find(
 		(item) => item.value === unref(queryFormModel).projectId
 	)?.label
 })
@@ -161,13 +217,39 @@ const selectLabel = computed(() => {
  */
 const changeProject = (value) => {
 	resetFormModel()
+	getLoadData()
+}
+
+/**
+ * 获取项目名称
+ */
+const getProjectName = (val) => {
+	return projectAllList.value.find((item) => item.projectId === val)
+		?.projectName
 }
 
 // 团队成员
-const teamMemberList = ref([
-	{ userId: '', userName: '所有成员', headImg: '' },
-	...unref(initMemberList),
-])
+const teamMemberList = computed(() => {
+	return [
+		{ userId: '', userName: '所有成员', headHead: '' },
+		...unref($teamUserList),
+	]
+})
+
+// 抽屉弹窗
+const drawerPropsData = reactive({
+	visible: false,
+	width: '600px',
+	userId: null,
+})
+
+/**
+ * 打开抽屉弹窗
+ */
+const openDrawer = (userId) => {
+	drawerPropsData.visible = true
+	drawerPropsData.userId = userId
+}
 
 // 筛选用户 ref
 const popoverUserRef = ref(null)
@@ -180,21 +262,14 @@ const findObjectLabel = (id, key, options) => {
 	return item
 }
 
-// 加载状态
-const pageLoading = ref(false)
-
-// 暂无数据
-const noMore = ref(false)
-
-const count = ref(5)
-
 /**
  * 修改数据
  */
 const changeValue = (value) => {
-	resetFormModel()
-	queryFormModel.userId = value
+	queryFormModel.operatorId = value
 	popoverUserRef.value && popoverUserRef.value.hide()
+	resetFormModel()
+	getLoadData()
 }
 
 /**
@@ -202,7 +277,35 @@ const changeValue = (value) => {
  */
 const resetFormModel = () => {
 	queryFormModel.page = 1
-	queryFormModel.limit = 10
+	queryFormModel.limit = 20
+	initialDynamicData.value = []
+	dynamicData.value = []
+	noMore.value = false
+	total.value = 0
+}
+
+// 加载状态
+const pageLoading = ref(false)
+
+// 暂无数据
+const noMore = ref(false)
+
+// 总数
+const total = ref(0)
+
+// 展示的数据
+const dynamicData = ref([])
+
+// 动态总数
+const initialDynamicData = ref([])
+
+/**
+ * 滚动加载
+ */
+const infiniteScroll = () => {
+	if (unref(pageLoading) || unref(noMore)) return
+	queryFormModel.page++
+	getLoadData()
 }
 
 /**
@@ -211,19 +314,86 @@ const resetFormModel = () => {
 const getLoadData = async () => {
 	try {
 		pageLoading.value = true
-		await setTimeout(() => {
-			count.value += 2
-		}, 2000)
-
-		if (count.value >= 20) {
+		const params = {
+			...unref(queryFormModel),
+			teamId: unref($teamId),
+		}
+		if (unref(noMore)) return
+		const { data: res } = await getOperateLogsApi(params)
+		initialDynamicData.value.push(...res.list)
+		total.value = res.total
+		console.log(unref(initialDynamicData).length, unref(total))
+		if (unref(initialDynamicData).length === unref(total)) {
 			noMore.value = true
 		}
+
+		res.list.forEach((item) => {
+			const date = item.operateTime.split(' ')[0]
+			const dateIndex = dynamicData.value.findIndex(
+				(data) => data.date === date
+			)
+			if (dateIndex > -1) {
+				const projectIndex = dynamicData.value[dateIndex].list.findIndex(
+					(data) => data.projectId === item.projectId
+				)
+				if (projectIndex > -1) {
+					dynamicData.value[dateIndex].list[projectIndex].list.push(item)
+				} else {
+					dynamicData.value[dateIndex].list.push({
+						projectId: item.projectId,
+						list: [item],
+					})
+				}
+			} else {
+				const dateData = calendar.getDateStatus(date)
+				const formatDate = date.split('-')[1] + '/' + date.split('-')[2]
+				dynamicData.value.push({
+					...dateData,
+					formatDate,
+					list: [{ projectId: item.projectId, list: [item] }],
+				})
+			}
+		})
+		console.log(dynamicData.value)
 	} catch (err) {
 		return Promise.reject(err)
 	} finally {
 		pageLoading.value = false
 	}
 }
+
+/**
+ * 返回操作时间
+ * @param dateTime
+ */
+const handleOperateTime = (dateTime) => {
+	return dateTime.split(' ')[1]
+}
+
+/**
+ * 获取所有项目列表
+ */
+const getProjectList = async () => {
+	try {
+		const params = {
+			teamId: unref($teamId),
+		}
+		const res = await getProjectAllListApi(params)
+
+		projectAllList.value = res.data
+	} catch (err) {
+		return Promise.reject(err)
+	}
+}
+
+const init = async () => {
+	getProjectList()
+	getLoadData()
+}
+
+onMounted(() => {
+	init()
+})
 </script>
 
 <style lang="scss" scoped></style>
